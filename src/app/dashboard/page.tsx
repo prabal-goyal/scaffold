@@ -87,7 +87,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
           <StatCard
             icon={<Activity className="h-4 w-4 text-[#6b6a65]" />}
             label="Total ratings"

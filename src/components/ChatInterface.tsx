@@ -2,7 +2,7 @@
 
 import { useChat } from "ai/react";
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, X, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SourceCard, { type Source } from "./SourceCard";
 import gsap from "gsap";
@@ -12,6 +12,7 @@ type MessageSources = Record<string, Source[]>;
 export default function ChatInterface() {
   const [messageSources, setMessageSources] = useState<MessageSources>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const dataRef = useRef<unknown[]>([]);
@@ -55,7 +56,7 @@ export default function ChatInterface() {
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const visibleSources = lastAssistant ? (messageSources[lastAssistant.id] ?? []) : [];
 
-  // Stagger source cards in from the right
+  // Stagger desktop source cards in from right
   useEffect(() => {
     if (visibleSources.length > 0 && sourcePanelRef.current) {
       const cards = Array.from(sourcePanelRef.current.children);
@@ -98,10 +99,10 @@ export default function ChatInterface() {
 
       {/* Center: messages + input */}
       <div className="flex flex-col flex-1 min-w-0 bg-[#f5f4f0]">
-        <div className="flex-1 overflow-y-auto p-6 space-y-5" ref={messagesBodyRef}>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5" ref={messagesBodyRef}>
           {messages.length === 0 && (
             <div className="h-full flex items-center justify-center">
-              <p className="text-[#a3a29c] text-sm">Upload a PDF then ask anything about it</p>
+              <p className="text-[#a3a29c] text-sm text-center px-4">Upload a PDF then ask anything about it</p>
             </div>
           )}
 
@@ -115,7 +116,7 @@ export default function ChatInterface() {
             >
               <div
                 className={cn(
-                  "max-w-[80%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "max-w-[85%] md:max-w-[80%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                   message.role === "user"
                     ? "bg-[#111110] text-white"
                     : "bg-white border border-[#e0dfd8] text-[#111110]"
@@ -160,8 +161,22 @@ export default function ChatInterface() {
 
         <form
           onSubmit={onSubmit}
-          className="p-4 border-t border-[#e0dfd8] flex gap-3 items-end bg-white"
+          className="p-3 md:p-4 border-t border-[#e0dfd8] flex gap-2 md:gap-3 items-end bg-white"
         >
+          {/* Mobile sources button */}
+          {visibleSources.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSourcesOpen(true)}
+              className="md:hidden shrink-0 p-2.5 border border-[#e0dfd8] text-[#6b6a65] hover:text-[#111110] hover:border-[#111110] transition-colors relative"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="absolute -top-1.5 -right-1.5 bg-[#111110] text-white text-[9px] font-mono w-4 h-4 flex items-center justify-center">
+                {visibleSources.length}
+              </span>
+            </button>
+          )}
+
           <textarea
             value={input}
             onChange={handleInputChange}
@@ -185,8 +200,31 @@ export default function ChatInterface() {
         </form>
       </div>
 
-      {/* Right: sources panel */}
-      <div className="w-72 border-l border-[#e0dfd8] flex flex-col shrink-0 bg-white">
+      {/* Mobile sources bottom sheet */}
+      {sourcesOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setSourcesOpen(false)} />
+          <div className="relative bg-white border-t border-[#e0dfd8] flex flex-col" style={{ maxHeight: "65vh" }}>
+            <div className="flex items-center justify-between p-4 border-b border-[#e0dfd8] shrink-0">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest">Sources</h2>
+                <p className="text-[10px] text-[#a3a29c] mt-0.5">Retrieved chunks for the last answer</p>
+              </div>
+              <button onClick={() => setSourcesOpen(false)} className="p-1 text-[#a3a29c] hover:text-[#111110] transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-3 flex flex-col gap-1.5">
+              {visibleSources.map((source, i) => (
+                <SourceCard key={i} source={source} index={i + 1} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop sources panel */}
+      <div className="hidden md:flex w-72 border-l border-[#e0dfd8] flex-col shrink-0 bg-white">
         <div className="p-4 border-b border-[#e0dfd8]">
           <h2 className="text-xs font-semibold uppercase tracking-widest">Sources</h2>
           <p className="text-[10px] text-[#a3a29c] mt-0.5">Retrieved chunks for the last answer</p>
