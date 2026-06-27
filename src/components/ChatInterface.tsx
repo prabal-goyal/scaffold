@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SourceCard, { type Source } from "./SourceCard";
+import gsap from "gsap";
 
 type MessageSources = Record<string, Source[]>;
 
@@ -12,59 +13,74 @@ export default function ChatInterface() {
   const [messageSources, setMessageSources] = useState<MessageSources>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
 
-  // We capture the question text at submit time so onFinish can use it.
-  // By the time onFinish fires, the input box has already been cleared by useChat.
-  const pendingQuestionRef = useRef<string>("");
-
   const bottomRef = useRef<HTMLDivElement>(null);
+  const dataRef = useRef<unknown[]>([]);
+  const consumedDataRef = useRef(0);
+  const prevMsgCount = useRef(0);
+  const messagesBodyRef = useRef<HTMLDivElement>(null);
+  const sourcePanelRef = useRef<HTMLDivElement>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useChat({
     api: "/api/chat",
-
     onFinish: (message) => {
-      // Stream is done — bind sources to this message id.
-      // We fire /api/retrieve here so the embed + search is not duplicated
-      // during the initial chat request. (The chat route already embeds + searches
-      // for its own prompt — this is a second, parallel call for the UI only.)
-      const question = pendingQuestionRef.current;
-      if (!question) return;
-
-      fetch("/api/retrieve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      })
-        .then((r) => r.json())
-        .then(({ chunks }) => {
-          if (chunks?.length) {
-            setMessageSources((prev) => ({ ...prev, [message.id]: chunks }));
-          }
-        });
-
-      pendingQuestionRef.current = "";
+      const allData = dataRef.current as Array<{ sources?: Source[] }>;
+      const entry = allData[consumedDataRef.current];
+      consumedDataRef.current += 1;
+      const sources = entry?.sources ?? [];
+      if (sources.length) {
+        setMessageSources((prev) => ({ ...prev, [message.id]: sources }));
+      }
     },
   });
 
-  // Auto-scroll as tokens arrive
+  useEffect(() => {
+    dataRef.current = data ?? [];
+  }, [data]);
+
+  // Animate new message sliding up
+  useEffect(() => {
+    if (messages.length > prevMsgCount.current && messagesBodyRef.current) {
+      const children = messagesBodyRef.current.children;
+      const el = children[children.length - 2] as HTMLElement;
+      if (el) {
+        gsap.fromTo(el,
+          { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.22, ease: "power2.out" }
+        );
+      }
+    }
+    prevMsgCount.current = messages.length;
+  }, [messages.length]);
+
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const visibleSources = lastAssistant ? (messageSources[lastAssistant.id] ?? []) : [];
+
+  // Stagger source cards in from the right
+  useEffect(() => {
+    if (visibleSources.length > 0 && sourcePanelRef.current) {
+      const cards = Array.from(sourcePanelRef.current.children);
+      gsap.fromTo(cards,
+        { x: 10, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.2, stagger: 0.06, ease: "power2.out" }
+      );
+    }
+  }, [visibleSources.length]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Custom submit: capture the question before useChat clears the input
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
-    pendingQuestionRef.current = input;
     handleSubmit(e);
   }
 
   async function submitRating(message: { id: string; content: string }, rating: 1 | -1) {
     if (ratings[message.id]) return;
     setRatings((prev) => ({ ...prev, [message.id]: rating }));
-
     const idx = messages.findIndex((m) => m.id === message.id);
     const question = idx > 0 ? messages[idx - 1].content : "";
-
     await fetch("/api/eval", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,18 +93,15 @@ export default function ChatInterface() {
     });
   }
 
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const visibleSources = lastAssistant ? (messageSources[lastAssistant.id] ?? []) : [];
-
   return (
     <div className="flex flex-1 min-w-0 min-h-0">
 
-      {/* ── Center: messages + input ── */}
-      <div className="flex flex-col flex-1 min-w-0">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Center: messages + input */}
+      <div className="flex flex-col flex-1 min-w-0 bg-[#f5f4f0]">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5" ref={messagesBodyRef}>
           {messages.length === 0 && (
             <div className="h-full flex items-center justify-center">
-              <p className="text-white/20 text-sm">Upload a PDF then ask anything about it</p>
+              <p className="text-[#a3a29c] text-sm">Upload a PDF then ask anything about it</p>
             </div>
           )}
 
@@ -102,10 +115,10 @@ export default function ChatInterface() {
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "max-w-[80%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                   message.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-sm"
-                    : "bg-white/10 text-white/90 rounded-bl-sm"
+                    ? "bg-[#111110] text-white"
+                    : "bg-white border border-[#e0dfd8] text-[#111110]"
                 )}
               >
                 {message.content}
@@ -117,7 +130,7 @@ export default function ChatInterface() {
                     onClick={() => submitRating(message, 1)}
                     title="Good answer"
                     className={cn(
-                      "text-base transition-opacity",
+                      "text-sm transition-opacity",
                       ratings[message.id] === 1 ? "opacity-100" : "opacity-25 hover:opacity-60"
                     )}
                   >👍</button>
@@ -125,7 +138,7 @@ export default function ChatInterface() {
                     onClick={() => submitRating(message, -1)}
                     title="Bad answer"
                     className={cn(
-                      "text-base transition-opacity",
+                      "text-sm transition-opacity",
                       ratings[message.id] === -1 ? "opacity-100" : "opacity-25 hover:opacity-60"
                     )}
                   >👎</button>
@@ -136,8 +149,8 @@ export default function ChatInterface() {
 
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex items-start">
-              <div className="bg-white/10 rounded-2xl rounded-bl-sm px-4 py-3">
-                <Loader2 className="h-4 w-4 animate-spin text-white/50" />
+              <div className="bg-white border border-[#e0dfd8] px-4 py-3">
+                <Loader2 className="h-4 w-4 animate-spin text-[#a3a29c]" />
               </div>
             </div>
           )}
@@ -147,7 +160,7 @@ export default function ChatInterface() {
 
         <form
           onSubmit={onSubmit}
-          className="p-4 border-t border-white/10 flex gap-3 items-end"
+          className="p-4 border-t border-[#e0dfd8] flex gap-3 items-end bg-white"
         >
           <textarea
             value={input}
@@ -160,27 +173,27 @@ export default function ChatInterface() {
                 onSubmit(e as unknown as React.FormEvent);
               }
             }}
-            className="flex-1 bg-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex-1 bg-[#f5f4f0] border border-[#e0dfd8] px-4 py-2.5 text-sm text-[#111110] placeholder-[#a3a29c] resize-none focus:outline-none focus:border-[#111110] transition-colors"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="p-2.5 bg-blue-600 rounded-xl text-white disabled:opacity-30 hover:bg-blue-500 transition-colors shrink-0"
+            className="p-2.5 bg-[#111110] text-white disabled:opacity-30 hover:bg-[#2d2d2c] transition-colors shrink-0"
           >
             <Send className="h-4 w-4" />
           </button>
         </form>
       </div>
 
-      {/* ── Right: sources panel ── */}
-      <div className="w-72 border-l border-white/10 flex flex-col shrink-0">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-sm font-medium">Sources</h2>
-          <p className="text-xs text-white/30 mt-0.5">Retrieved chunks for the last answer</p>
+      {/* Right: sources panel */}
+      <div className="w-72 border-l border-[#e0dfd8] flex flex-col shrink-0 bg-white">
+        <div className="p-4 border-b border-[#e0dfd8]">
+          <h2 className="text-xs font-semibold uppercase tracking-widest">Sources</h2>
+          <p className="text-[10px] text-[#a3a29c] mt-0.5">Retrieved chunks for the last answer</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5" ref={sourcePanelRef}>
           {visibleSources.length === 0 ? (
-            <p className="text-xs text-white/20 text-center py-8">
+            <p className="text-xs text-[#a3a29c] text-center py-8">
               Sources appear here after you ask a question
             </p>
           ) : (

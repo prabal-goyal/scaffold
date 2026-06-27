@@ -1,10 +1,17 @@
 import { openai, CHAT_MODEL, EMBEDDING_MODEL } from "@/lib/openai";
 import { createServiceClient } from "@/lib/supabase";
-import { OpenAIStream, StreamingTextResponse } from "ai";
+import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { OpenAIStream, StreamingTextResponse, StreamData } from "ai";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const authClient = await createSupabaseServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
   const { messages } = await req.json();
 
   // messages is the full conversation history — array of { role, content } objects.
@@ -30,6 +37,7 @@ export async function POST(req: Request) {
   const { data: chunks, error } = await supabase.rpc("match_chunks", {
     query_embedding: questionVector,
     match_count: 5,
+    filter_user_id: user.id,
   });
 
   if (error) {
@@ -60,20 +68,26 @@ DOCUMENT EXCERPTS:
 ${context}`;
 
   // ── Step 4: Stream the response ────────────────────────────────────────────
-  // stream: true tells OpenAI to send tokens as they're generated (not wait for the full response).
-  // This is what creates the "typing" effect in the UI.
+  // Attach the retrieved chunks to the stream as structured data so the client
+  // can render SourceCards without a second embedding call to OpenAI.
+  const streamData = new StreamData();
+  streamData.append({ sources: chunks });
+
   const response = await openai.chat.completions.create({
     model: CHAT_MODEL,
     stream: true,
-    temperature: 0.2,   // low temperature = more factual, less creative. Good for Q&A over documents.
+    temperature: 0.2,
     messages: [
       { role: "system", content: systemPrompt },
-      ...messages,      // full conversation history so GPT understands follow-up questions
+      ...messages,
     ],
   });
 
-  // OpenAIStream converts OpenAI's proprietary stream format into a Web ReadableStream.
-  // StreamingTextResponse wraps it in an HTTP response with the right headers for SSE.
-  const stream = OpenAIStream(response);
-  return new StreamingTextResponse(stream);
+  const stream = OpenAIStream(response, {
+    onFinal() {
+      streamData.close();
+    },
+  });
+
+  return new StreamingTextResponse(stream, {}, streamData);
 }

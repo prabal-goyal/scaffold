@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { openai, EMBEDDING_MODEL } from "@/lib/openai";
 import { chunkText } from "@/lib/chunker";
 import pdfParse from "pdf-parse";
@@ -9,8 +10,12 @@ import pdfParse from "pdf-parse";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  // The browser sends a FormData object (multipart/form-data).
-  // This is the standard way to upload binary files over HTTP.
+  const authClient = await createSupabaseServerClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
 
@@ -20,6 +25,10 @@ export async function POST(req: NextRequest) {
 
   if (!file.name.endsWith(".pdf")) {
     return NextResponse.json({ error: "Only PDFs are supported" }, { status: 400 });
+  }
+
+  if (file.size > 4 * 1024 * 1024) {
+    return NextResponse.json({ error: "File too large (max 4 MB)" }, { status: 413 });
   }
 
   // ── Step 1: Extract text from the PDF ──────────────────────────────────────
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
   // update it instead of creating a duplicate. Safe to re-upload the same PDF.
   const { data: doc, error: docError } = await supabase
     .from("documents")
-    .upsert({ name: file.name, page_count: numpages }, { onConflict: "name" })
+    .upsert({ name: file.name, page_count: numpages, user_id: user.id }, { onConflict: "name" })
     .select("id")
     .single();
 
@@ -80,7 +89,6 @@ export async function POST(req: NextRequest) {
   }));
 
   // Delete old chunks for this document before inserting new ones.
-  // This handles the re-upload case — we don't want duplicate chunks.
   await supabase.from("chunks").delete().eq("document_id", doc.id);
 
   const { error: insertError } = await supabase.from("chunks").insert(rows);
@@ -89,7 +97,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // Tell the browser how many chunks were indexed so it can show this in the UI
+  // Clear all other documents (and their chunks) for this user — keep only the new one.
+  const { data: otherDocs } = await supabase
+    .from("documents")
+    .select("id")
+    .eq("user_id", user.id)
+    .neq("id", doc.id);
+
+  if (otherDocs && otherDocs.length > 0) {
+    const otherIds = otherDocs.map((d) => d.id);
+    await supabase.from("chunks").delete().in("document_id", otherIds);
+    await supabase.from("documents").delete().in("id", otherIds);
+  }
+
   return NextResponse.json({
     success: true,
     document: file.name,

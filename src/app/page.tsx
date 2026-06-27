@@ -1,20 +1,22 @@
 import ChatInterface from "@/components/ChatInterface";
 import DocumentUpload from "@/components/DocumentUpload";
+import SignOutButton from "@/components/SignOutButton";
 
 export default function Home() {
   return (
-    <main className="flex h-screen bg-[#0a0a0a] text-white overflow-hidden">
+    <main className="flex h-screen bg-[#f5f4f0] text-[#111110] overflow-hidden">
 
-      {/* Left sidebar — document upload + indexed doc list */}
-      <aside className="w-72 border-r border-white/10 flex flex-col shrink-0">
-        <div className="p-4 border-b border-white/10">
-          <h1 className="text-lg font-semibold tracking-tight">RAG</h1>
-          <p className="text-xs text-white/40 mt-0.5">Chat with your documents</p>
+      <aside className="w-72 border-r border-[#e0dfd8] flex flex-col shrink-0 bg-white">
+        <div className="p-4 border-b border-[#e0dfd8] flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-semibold tracking-tight">RAG</h1>
+            <p className="text-xs text-[#a3a29c] mt-0.5">Chat with your documents</p>
+          </div>
+          <SignOutButton />
         </div>
         <DocumentUpload />
       </aside>
 
-      {/* Center + right — chat and sources side by side */}
       <div className="flex flex-1 min-w-0">
         <ChatInterface />
       </div>
