@@ -83,7 +83,8 @@ ${context}`;
     ],
   });
 
-  const stream = OpenAIStream(response, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stream = OpenAIStream(response as any, {
     onFinal() {
       streamData.close();
     },
