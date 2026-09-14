@@ -66,11 +66,15 @@ export async function POST(req: NextRequest) {
   const supabase = createServiceClient();
 
   // First insert (or update) the document record.
-  // upsert + onConflict:"name" means: if this filename already exists,
-  // update it instead of creating a duplicate. Safe to re-upload the same PDF.
+  // The conflict target is (user_id, name), not name alone: uniqueness is
+  // per-user, so two people can each own a "report.pdf" without colliding.
+  // Re-uploading your own file still updates in place rather than duplicating.
   const { data: doc, error: docError } = await supabase
     .from("documents")
-    .upsert({ name: file.name, page_count: numpages, user_id: user.id }, { onConflict: "name" })
+    .upsert(
+      { name: file.name, page_count: numpages, user_id: user.id },
+      { onConflict: "user_id,name" }
+    )
     .select("id")
     .single();
 
