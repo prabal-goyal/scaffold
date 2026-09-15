@@ -1,20 +1,54 @@
 import { openai, EMBEDDING_MODEL, CHAT_MODEL } from "@/lib/openai";
 import { openai as aiOpenai } from "@ai-sdk/openai";
-import { createServiceClient } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { chatRequestSchema, parseJsonBody } from "@/lib/validation";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { streamText, createDataStreamResponse } from "ai";
 
 export const maxDuration = 30;
+
+// This route spends money on every call — one embedding plus one completion.
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
+
+function json(body: unknown, status: number, headers?: HeadersInit) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...headers },
+  });
+}
 
 export async function POST(req: Request) {
   const authClient = await createSupabaseServerClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return json({ error: "Unauthorized" }, 401);
   }
 
-  const { messages } = await req.json();
-  const question = messages[messages.length - 1].content as string;
+  const limit = checkRateLimit(user.id, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.ok) {
+    return json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      429,
+      { "Retry-After": String(limit.retryAfterSeconds) }
+    );
+  }
+
+  // Validated before anything is sent to OpenAI. The schema constrains `role`
+  // to user/assistant: a client-supplied "system" message would otherwise sit
+  // alongside the grounding prompt below and override it.
+  const body = await parseJsonBody(req, chatRequestSchema);
+  if (!body.ok) {
+    return json({ error: body.error }, 400);
+  }
+
+  const { messages } = body.data;
+  const question = messages[messages.length - 1].content.trim();
+
+  if (!question) {
+    return json({ error: "The last message must not be empty" }, 400);
+  }
 
   // ── Step 1: Embed the question ──────────────────────────────────────────────
   const embeddingResponse = await openai.embeddings.create({
@@ -32,7 +66,10 @@ export async function POST(req: Request) {
   });
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    // Logged in full, returned in outline: the raw message carries column and
+    // constraint names that only help someone probing the schema.
+    console.error("match_chunks failed", error);
+    return json({ error: "Could not search your documents" }, 500);
   }
 
   // ── Step 3: Build the prompt ───────────────────────────────────────────────
@@ -65,10 +102,7 @@ ${context}`;
         model: aiOpenai(CHAT_MODEL),
         temperature: 0.2,
         system: systemPrompt,
-        messages: messages.map(({ role, content }: { role: string; content: string }) => ({
-          role,
-          content,
-        })),
+        messages,
       });
 
       result.mergeIntoDataStream(dataStream);

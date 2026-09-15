@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { openai, EMBEDDING_MODEL } from "@/lib/openai";
 import { chunkText } from "@/lib/chunker";
+import { checkRateLimit } from "@/lib/rate-limit";
 import pdfParse from "pdf-parse";
 
 // Vercel serverless functions timeout at 10s by default.
 // Large PDFs take longer — we raise the limit to 60s.
 export const maxDuration = 60;
 
+// Ingest is the most expensive route: one embedding call per chunk of the
+// whole document. The limit is tight because re-uploading is rare.
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 10 * 60_000;
+
 export async function POST(req: NextRequest) {
   const authClient = await createSupabaseServerClient();
   const { data: { user } } = await authClient.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Checked before the upload is read, so a rate-limited caller cannot make us
+  // buffer a 4 MB body first.
+  const limit = checkRateLimit(`ingest:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
   }
 
   const formData = await req.formData();
@@ -79,7 +95,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (docError) {
-    return NextResponse.json({ error: docError.message }, { status: 500 });
+    console.error("document upsert failed", docError);
+    return NextResponse.json({ error: "Could not save the document" }, { status: 500 });
   }
 
   // Build the rows to insert — one per chunk.
@@ -98,7 +115,8 @@ export async function POST(req: NextRequest) {
   const { error: insertError } = await supabase.from("chunks").insert(rows);
 
   if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+    console.error("chunk insert failed", insertError);
+    return NextResponse.json({ error: "Could not save the document" }, { status: 500 });
   }
 
   // Clear all other documents (and their chunks) for this user — keep only the new one.

@@ -9,6 +9,19 @@ import gsap from "gsap";
 
 type MessageSources = Record<string, Source[]>;
 
+// The AI SDK surfaces a failed response as an Error carrying the raw body, so
+// the route's own JSON message is in there — worth unwrapping, since "Too many
+// requests" is far more useful than the stringified body.
+function readErrorMessage(error: Error): string {
+  try {
+    const parsed = JSON.parse(error.message) as { error?: unknown };
+    if (typeof parsed.error === "string") return parsed.error;
+  } catch {
+    // Not JSON — fall through to the generic message below.
+  }
+  return "Something went wrong. Please try again.";
+}
+
 export default function ChatInterface() {
   const [messageSources, setMessageSources] = useState<MessageSources>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
@@ -21,8 +34,15 @@ export default function ChatInterface() {
   const messagesBodyRef = useRef<HTMLDivElement>(null);
   const sourcePanelRef = useRef<HTMLDivElement>(null);
 
+  const [chatError, setChatError] = useState<string | null>(null);
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useChat({
     api: "/api/chat",
+    // Without this the route's 429 and 400 responses fail silently — the
+    // request disappears and the user is left looking at an unchanged screen.
+    onError: (error) => {
+      setChatError(readErrorMessage(error));
+    },
     onFinish: (message) => {
       const allData = dataRef.current as Array<{ sources?: Source[] }>;
       const entry = allData[consumedDataRef.current];
@@ -74,6 +94,7 @@ export default function ChatInterface() {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
+    setChatError(null);
     handleSubmit(e);
   }
 
@@ -82,16 +103,28 @@ export default function ChatInterface() {
     setRatings((prev) => ({ ...prev, [message.id]: rating }));
     const idx = messages.findIndex((m) => m.id === message.id);
     const question = idx > 0 ? messages[idx - 1].content : "";
-    await fetch("/api/eval", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question,
-        answer: message.content,
-        sources: messageSources[message.id] ?? [],
-        rating,
-      }),
-    });
+    try {
+      const res = await fetch("/api/eval", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          answer: message.content,
+          sources: messageSources[message.id] ?? [],
+          rating,
+        }),
+      });
+      if (!res.ok) throw new Error("Rating was not saved");
+    } catch {
+      // The rating was applied optimistically above; roll it back so the UI
+      // does not claim feedback was recorded when it was not.
+      setRatings((prev) => {
+        const next = { ...prev };
+        delete next[message.id];
+        return next;
+      });
+      setChatError("Could not save your rating. Please try again.");
+    }
   }
 
   return (
@@ -158,6 +191,23 @@ export default function ChatInterface() {
 
           <div ref={bottomRef} />
         </div>
+
+        {chatError && (
+          <div
+            role="alert"
+            className="mx-3 md:mx-4 mb-2 flex items-start justify-between gap-3 border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+          >
+            <span>{chatError}</span>
+            <button
+              type="button"
+              onClick={() => setChatError(null)}
+              aria-label="Dismiss error"
+              className="shrink-0 text-red-400 hover:text-red-700 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         <form
           onSubmit={onSubmit}

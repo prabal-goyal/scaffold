@@ -14,7 +14,56 @@ src/lib/openai.ts           client + model constants
 src/app/api/ingest/route.ts PDF → parse → chunk → embed → store
 src/app/api/chat/route.ts   embed question → match_chunks RPC → streamed answer
 src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
+src/lib/validation.ts       zod schemas + parseJsonBody for route bodies
+src/lib/rate-limit.ts       in-memory sliding window (per-instance)
+src/lib/supabase.service.ts service-role client — server-only
+supabase/migrations/        schema the code depends on
 ```
+
+---
+
+## Non-negotiables
+
+Each of these cost something real to learn. The reasoning matters more than the
+rule, so it is written down alongside it.
+
+1. **Validate every request body at the route boundary with zod — including
+   `role` on LLM messages.** Sign-up is self-service, so an authenticated caller
+   is an anonymous one. `/api/chat` once forwarded a client-supplied `role`
+   straight to the model: `{"role":"system"}` overrode the grounding prompt and
+   turned the route into a free, unlogged LLM billed to us. Use
+   `parseJsonBody()` from `src/lib/validation.ts`.
+
+2. **Secrets live in modules that `import "server-only"`.** Never put a browser
+   client and a service client in the same file. The old `src/lib/supabase.ts`
+   held both, guarded by a comment saying "never import in client components" —
+   and two client components imported it anyway. A comment is not a boundary; a
+   build failure is.
+
+3. **Every route that spends money is rate-limited before it calls the
+   provider.** Check the limit before reading the body, so a limited caller
+   cannot make the server buffer a 4 MB upload first.
+
+4. **Never return a raw database error to a client.** `error.message` carries
+   column names, constraint names and pgvector dimensions — free reconnaissance.
+   `console.error` the detail, return a generic sentence.
+
+5. **The service-role client bypasses RLS, so scope every query by the session
+   user id explicitly.** RLS is the backstop, never the primary control — and
+   the caller's id always comes from `getUser()`, never from the request body.
+
+6. **Assume the database is reachable without going through the routes.** The
+   anon key is public. Anything anon or authenticated can select or execute
+   directly is part of the attack surface, however correct the routes are.
+
+7. **`"use client"` belongs at leaves, not on pages.** Client Components are
+   fine — that is what they are for — but a directive at the top of a page pulls
+   its whole subtree client-side, which is how the service-role module ended up
+   in the client graph. Pages stay Server Components by default.
+
+8. **Schema the code depends on is tracked in `supabase/migrations/`.** Ingest
+   relies on a `(user_id, name)` unique constraint; untracked, it silently
+   degrades to duplicate inserts in a fresh environment.
 
 ---
 
@@ -23,19 +72,24 @@ src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
 Findings from a full read of `src/`, ranked by value. Each item notes the
 CV/portfolio claim it unlocks.
 
-### P0 — Broken and exploitable
+### P0 — Done
 
-1. **`npm test` is broken.** `package.json` declares `"test": "tsx tests/run-tests.ts"`
-   but `tests/` does not exist. Anyone who clones and runs the documented command
-   gets an immediate failure. Fix it by building the harness in (2).
+1. ~~**`npm test` is broken.**~~ Fixed in `54783fd` — `tests/run-tests.ts` now
+   exists with unit tests for `chunkText` and `checkRateLimit`.
 
-2. **`/api/eval` has no authentication.** `src/app/api/eval/route.ts` never calls
-   `auth.getUser()`, unlike the ingest and chat routes. `GET /api/eval` returns
-   **every user's questions and answers** to any anonymous caller, and `POST`
-   accepts anonymous writes into the evals table. Real cross-user data leak on a
-   live deployment.
-   **Fix:** require a session on both verbs; scope the `evals` table by `user_id`
-   and filter the dashboard query to the caller.
+2. ~~**`/api/eval` has no authentication.**~~ Fixed in `0067440` — both verbs
+   require a session and scope by `user_id`.
+
+3. ~~**`/api/chat` accepted an arbitrary `role`.**~~ Fixed — see
+   non-negotiable 1. Validated by `chatRequestSchema`.
+
+4. ~~**No rate limiting anywhere.**~~ Fixed — `src/lib/rate-limit.ts` applied to
+   chat, ingest and eval. Note the documented per-instance limitation.
+
+5. ~~**Anon and authenticated could call `match_chunks` directly**~~ with any
+   `filter_user_id`, bypassing route auth entirely. Fixed by
+   `supabase/migrations/0002_rls_and_rpc_lockdown.sql` — **must be run in the
+   Supabase SQL editor**, it is not applied automatically.
 
 ### P1 — The eval harness (highest-value item in the project)
 
@@ -76,10 +130,9 @@ CV/portfolio claim it unlocks.
 
 ### P2 — Correctness and robustness
 
-7. **Cross-user document collision.** `src/app/api/ingest/route.ts` upserts with
-   `onConflict: "name"`, but that unique constraint is global rather than per-user:
-   two different users uploading `report.pdf` collide across accounts. Needs a
-   composite unique constraint on `(user_id, name)`.
+7. ~~**Cross-user document collision.**~~ Fixed in `32ee9fb` — ingest upserts on
+   `(user_id, name)`. The constraint itself is now recorded in
+   `supabase/migrations/0002_rls_and_rpc_lockdown.sql`.
 
 8. **Single-document limitation.** Ingest deletes every other document the user
    owns after a successful upload. Supporting multiple documents with a filter is
@@ -95,3 +148,48 @@ CV/portfolio claim it unlocks.
 11. **No tests beyond the harness.** `chunkText` is a pure function and ideal for
     unit tests: overlap correctness, sentence-boundary splitting, empty input, text
     with no terminal punctuation.
+
+### P2 — Deferred from the Sep 2026 security pass
+
+Found by audit, deliberately not fixed in that pass (scope was "exploitable
+now"). Listed so they are not rediscovered from scratch.
+
+12. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported`
+    defaulting to true**, parsing attacker-uploaded binaries. No reachable
+    exploit chain was confirmed via the text-extraction path used here — the
+    published CVE-2024-4367 route runs through display-layer code this app never
+    calls — but a seven-year-old parser on untrusted input is a bad place to be
+    relying on that distinction. Replace with `unpdf`, or current `pdfjs-dist`
+    with `isEvalSupported: false`.
+
+13. **No security headers in `next.config.mjs`.** Missing CSP, HSTS,
+    `X-Frame-Options`/`frame-ancestors`, `nosniff`, `Referrer-Policy`. The
+    concrete risk is clickjacking, since every upload destructively deletes the
+    user's prior documents.
+
+14. **Prompt injection from document content and filenames.** `/api/chat`
+    interpolates retrieved chunk text and `document_name` into the system prompt
+    with no delimiting. Self-injection only while retrieval is single-tenant —
+    becomes a real cross-user attack the moment sharing, cross-document
+    retrieval or tool-calling is added.
+
+15. **No `try/catch` around `pdfParse`.** It throws on malformed, encrypted or
+    password-protected PDFs, all of which pass the `.endsWith(".pdf")` check.
+    That check is also filename-only — no magic-byte validation.
+
+16. **Dashboard fetches on the client what the server already has.**
+    `src/app/dashboard/page.tsx` calls `/api/eval` from a `useEffect`, costing a
+    hydrate plus a round-trip and flashing `Loading…`. It should be a Server
+    Component passing `stats` into a thin client animation wrapper. Its
+    `.then(setStats)` also has no `.catch`, so an error response renders as
+    `NaN%` rather than an error.
+
+17. **No `.env.example`,** and `README.md` documents `.env.local` while the repo
+    uses `.env`. Four vars are required: `NEXT_PUBLIC_SUPABASE_URL`,
+    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+    `OPENAI_API_KEY`.
+
+18. **Supabase auth settings are an undocumented setup dependency.** The app
+    expects `signUp()` to return a session immediately, which requires *Confirm
+    email* to be off. A fresh project has it on, so sign-up fails with a
+    misleading "Could not complete sign-up" error.

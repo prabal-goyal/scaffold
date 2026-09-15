@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { evalRequestSchema, parseJsonBody } from "@/lib/validation";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+// Writes here are cheap individually but unbounded in aggregate, so the limit
+// is generous — it exists to stop a loop filling the table, not to pace a user
+// clicking 👍/👎.
+const WRITE_LIMIT = 60;
+const WRITE_WINDOW_MS = 60_000;
 
 // The service client bypasses RLS, so every query below must be scoped to the
 // authenticated user explicitly — there is no database-level safety net here.
@@ -17,31 +25,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { question, answer, sources, rating } = await req.json();
-
-  if (rating !== 1 && rating !== -1) {
-    return NextResponse.json({ error: "rating must be 1 or -1" }, { status: 400 });
-  }
-
-  if (typeof question !== "string" || typeof answer !== "string") {
+  const limit = checkRateLimit(`eval:${user.id}`, WRITE_LIMIT, WRITE_WINDOW_MS);
+  if (!limit.ok) {
     return NextResponse.json(
-      { error: "question and answer must be strings" },
-      { status: 400 }
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
     );
   }
+
+  const body = await parseJsonBody(req, evalRequestSchema);
+  if (!body.ok) {
+    return NextResponse.json({ error: body.error }, { status: 400 });
+  }
+
+  const { question, answer, sources, rating } = body.data;
 
   const supabase = createServiceClient();
 
   const { error } = await supabase.from("evals").insert({
     question,
     answer,
-    sources,        // stored as jsonb — the full array of chunk objects
+    sources,        // stored as jsonb — shape and length bounded by the schema
     rating,         // 1 = thumbs up, -1 = thumbs down
     user_id: user.id, // from the session, never from the request body
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("eval insert failed", error);
+    return NextResponse.json({ error: "Could not save your feedback" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
@@ -63,7 +74,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("eval fetch failed", error);
+    return NextResponse.json({ error: "Could not load your stats" }, { status: 500 });
   }
 
   const total = data.length;
