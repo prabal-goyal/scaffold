@@ -111,28 +111,42 @@ CV/portfolio claim it unlocks.
      miss produced a confident wrong answer, which hit-rate alone scores the
      same as a retrieval miss that correctly abstained.
 
-4. ~~**Hybrid search + reranking.**~~ **Hybrid done; reranking not attempted.**
-   Postgres `tsvector` full-text search fused with vector results by reciprocal
-   rank fusion (`src/lib/rrf.ts`), shipped in `/api/chat`. Migrations 0003+0004.
-   **hit-rate@5 80.0% → 92.0%, MRR@5 0.627 → 0.783**, +290 ms p50.
+4. ~~**Hybrid search + reranking.**~~ **Hybrid done and tuned; reranking not
+   attempted.** Vector fused with Postgres full-text by *weighted* RRF
+   (`src/lib/rrf.ts`), shipped in `/api/chat`. Migrations 0003-0005.
 
-   Read before building on this:
-   - **The golden set is biased toward lexical retrieval** — questions were
-     written from distinctive passages, so they share wording with their own
-     gold chunks. Pure lexical scores 96.0% here, which is almost certainly an
-     artifact. Adding paraphrased questions is the highest-value next step on
-     the harness, and it must happen before lexical-vs-hybrid means anything.
-   - RRF `k` is left at 60 on purpose. `npm run eval:sweep` shows 10-120 is a
-     flat plateau and low k wins by one question — noise at n=25, and tuning on
-     the measured set is overfitting.
-   - The two remaining misses (a19, a24) both fail the same way: one retriever
-     ranks the gold chunk 1st, the other never returns it, and RRF's preference
-     for agreement buries it. A reranker over the union of candidates is the
-     obvious fix, and is the part of this item still undone.
-   - A lexical retriever returning zero rows looks exactly like one that works:
-     the first version of 0003 used `websearch_to_tsquery`, which ANDs terms, so
-     it matched nothing and hybrid silently ran as vector-only with plausible
-     metrics. The runner now reports lexical contribution per run.
+   The golden set now asks each question three ways — verbatim, paraphrase,
+   keyword — because the first version was biased. Measured word overlap with
+   the gold passage: **0.522 verbatim vs 0.050 paraphrase**.
+
+   hit-rate@5 across styles (`npm run eval:sweep`):
+
+   | strategy | verbatim | paraphrase | keyword | mean |
+   | --- | --- | --- | --- | --- |
+   | vector only | 80.0% | 68.0% | 56.0% | 68.0% |
+   | lexical only | 96.0% | 20.0% | 24.0% | 46.7% |
+   | RRF k=60 w=1 | 92.0% | 52.0% | 44.0% | 62.7% |
+   | **RRF k=10 w=0.5** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
+
+   Things that cost real time to learn here:
+   - **Never evaluate retrieval on questions written from the passage.** Lexical
+     search scored 96% on that style and 20% on paraphrases of the same
+     questions. A single-style eval would have shipped lexical-only.
+   - **Equal-weight fusion was a regression** (62.7% vs vector's 68.0%): fusing
+     a retriever that is usually wrong drags down one that was right. Lexical
+     gets weight 0.5.
+   - **Prefer dominance over means.** k=10/w=0.5 ships because it is never worse
+     than vector-only on any style or metric — a better mean hid the regression.
+   - k and the weight were swept against the same set they are measured on.
+     Treat them as a sensible region, not an optimum.
+   - **A lexical retriever returning zero rows looks exactly like one that
+     works.** 0003 used `websearch_to_tsquery`, which ANDs terms, so it matched
+     nothing and hybrid silently ran as vector-only with plausible metrics. The
+     runner now reports lexical contribution per run.
+   - **Ties need a tie-break.** `ts_rank` ties plus LIMIT made lexical retrieval
+     non-deterministic and two identical runs disagreed. Fixed in 0005.
+   - Still undone: a reranker. The remaining paraphrase misses are cases where
+     *neither* retriever finds the passage, so fusion tuning cannot help.
 
 5. **Use a real tokenizer.** `src/lib/chunker.ts` estimates tokens as
    `Math.ceil(text.length / 4)`, so the chunk sizes are character approximations,

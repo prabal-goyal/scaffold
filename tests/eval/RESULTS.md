@@ -1,7 +1,6 @@
 # Retrieval evaluation
 
-Generated 2026-09-15. Raw per-question data in `results-vector.json` and
-`results-hybrid.json`.
+Generated 2026-09-15. Raw per-question data in `results-<strategy>-<style>.json`.
 
 ## Setup
 
@@ -18,83 +17,115 @@ Top-5 over 208 chunks means retrieval selects 2.4% of the corpus, and the 30
 essays argue adjacent points about the same constitution — so the near-misses
 are genuinely hard rather than padding.
 
-## Results — vector vs hybrid
+## The golden set asks each question three ways
 
-Same corpus, same questions, same day. `npm run eval` and `npm run eval:hybrid`.
+The first version of this set was written by pulling distinctive passages out of
+the corpus and composing a question around each. That produces questions sharing
+vocabulary with their own gold chunk — the exact condition lexical search excels
+at. The bias is measurable, not hypothetical (`npm run eval:validate`):
 
-| Metric | vector (before) | hybrid (after) |
+| style | mean overlap with its own gold passage |
+| --- | --- |
+| verbatim | **0.522** (one question lifts every content word) |
+| paraphrase | 0.050 |
+| keyword | 0.059 |
+
+So every answer is now asked three ways against the same gold label: `verbatim`
+(echoes the document), `paraphrase` (same intent, different words) and `keyword`
+(terse search-box input). A strategy that only wins on `verbatim` is overfitted
+to the corpus vocabulary and will disappoint real users.
+
+## Results — the full matrix
+
+`npm run eval:sweep`. 25 questions × 3 styles, retrieval-only, no LLM calls, so
+the whole matrix costs about half a cent.
+
+### hit-rate@5
+
+| strategy | verbatim | paraphrase | keyword | mean |
+| --- | --- | --- | --- | --- |
+| vector only | 80.0% | 68.0% | 56.0% | 68.0% |
+| lexical only | 96.0% | **20.0%** | **24.0%** | 46.7% |
+| RRF k=60 w=1 | 92.0% | 52.0% | 44.0% | 62.7% |
+| **RRF k=10 w=0.5** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
+
+### MRR@5
+
+| strategy | verbatim | paraphrase | keyword | mean |
+| --- | --- | --- | --- | --- |
+| vector only | 0.627 | 0.439 | 0.331 | 0.466 |
+| lexical only | 0.878 | 0.088 | 0.119 | 0.362 |
+| RRF k=60 w=1 | 0.770 | 0.281 | 0.308 | 0.453 |
+| **RRF k=10 w=0.5** | **0.736** | **0.441** | **0.359** | **0.512** |
+
+### What this changed
+
+**Lexical search collapses from 96.0% to 20.0% once questions stop echoing the
+document.** That is the single most important number here. Any evaluation using
+only `verbatim`-style questions would have concluded lexical retrieval was the
+best strategy available, and shipped something that fails four out of five real
+queries.
+
+**Equal-weight fusion was a regression.** RRF at k=60 with both retrievers
+weighted equally scored 62.7% mean — *worse than pure vector's 68.0%* — because
+fusing a retriever that is wrong 80% of the time at full strength drags down
+vector results that were already correct. It only looked good on the biased
+style, where it scored 92.0%.
+
+**The shipped configuration gives lexical half a vote.** At k=10, weight 0.5,
+fusion is never worse than vector-only on any style or either metric, and adds
+16 points of hit-rate when the user does quote the document. That dominance is
+the reason for these values — a better *mean* can hide a regression in one
+style, which is exactly what happened at equal weight.
+
+## End-to-end, including generation
+
+`npm run eval:hybrid` and `npm run eval:hybrid -- --style=paraphrase`.
+
+| Metric | verbatim | paraphrase |
 | --- | --- | --- |
-| hit-rate@5 | 80.0% (20/25) | **92.0%** (23/25) |
-| MRR@5 | 0.627 | **0.783** |
-| abstention on unanswerable | 75.0% | **87.5%** |
-| false abstention on answerable | 8.0% | **0.0%** |
-| latency p50 | 1,738 ms | 2,021 ms |
-| latency p95 | 2,384 ms | 2,693 ms |
-| cost per query | $0.00039 | $0.00039 |
+| hit-rate@5 | 96.0% | 68.0% |
+| MRR@5 | 0.736 | 0.461 |
+| abstention on unanswerable | 87.5% | 87.5% |
+| false abstention on answerable | 0.0% | 24.0% |
+| latency p50 | 1,978 ms | 1,938 ms |
+| cost per query | $0.00039 | $0.00038 |
 
-Rank distribution moved from 13/3/2/2/0 to **17/4/1/1/0** — most of the gain is
-gold chunks arriving at rank 1, not merely scraping into the top 5.
+The honest headline is the **paraphrase** column, because that is how users ask.
+Quote the verbatim number only alongside the overlap table above.
 
-Hybrid costs about **+290 ms** at p50: one extra database round trip. The two
-retrievers run concurrently, so it is one query's latency, not two.
+## A note on determinism
 
-Retrieval is deterministic — repeated runs give identical hit-rate, MRR, misses
-and rank distribution. Only latency varies.
+Pure vector retrieval is deterministic: repeated runs give identical hit-rate,
+MRR, misses and rank distribution.
 
-## The fusion constant, swept
+Hybrid was *not*, until migration 0005. `ts_rank` produces many ties, and the
+lexical query ordered only by rank — so tied rows came back in arbitrary order
+and, because the query also applies LIMIT, different rows survived. Two runs of
+the same configuration disagreed (MRR@5 0.441 vs 0.461 on paraphrase) and the
+gap looked like signal. 0005 adds `chunk_index` as a stable tie-break.
 
-`npm run eval:sweep` — retrieval metrics need no LLM call, so this ingests once,
-fetches each question's candidates once, and fuses offline at every k. A full
-sweep costs about a fifth of a cent.
+## Tuning caveat
 
-| strategy | hit-rate@5 | MRR@5 | misses |
-| --- | --- | --- | --- |
-| vector only | 80.0% | 0.627 | a05, a07, a17, a19, a22 |
-| lexical only | 96.0% | 0.878 | a24 |
-| RRF k=0–5 | 96.0% | 0.827 | a17 |
-| RRF k=10–120 | 92.0% | 0.770 | a19, a24 |
-
-**k is deliberately left at 60.** Low k scores better, but by one question — 4
-percentage points at n=25 is noise, and picking the constant that wins on the
-set being measured is overfitting. The 10–120 plateau is flat, so the choice
-within it does not matter much.
-
-## The golden set is biased toward lexical retrieval
-
-Pure lexical search beats hybrid here (96.0% / 0.878). That is almost certainly
-an artifact of how this set was built, not a finding about RAG.
-
-The questions were written by pulling distinctive passages out of the corpus and
-composing a question around each, so they **share vocabulary with their own gold
-chunks** — "mischiefs of faction", "desperate debtor", "navigation of the
-Mississippi". That is the exact condition `ts_rank` excels at. Real users
-paraphrase.
-
-What survives the bias: **hybrid beats vector at every k tried (92–96% vs
-80.0%)**. The bias works against the vector component, so it cannot be what
-produces that gap.
-
-What does not survive it: any claim that lexical alone is sufficient. Before
-that comparison means anything, the set needs paraphrased questions that avoid
-the gold chunk's wording. That is the next thing to fix here.
+k and the lexical weight were chosen by sweeping against this same set, which is
+tuning on the data being measured. With 25 questions per style, treat the
+specific values as "a sensible region", not an optimum. What justifies shipping
+them is not that they won the sweep — it is that they are never worse than the
+simpler alternative on any of the six style × metric cells.
 
 ## What the misses show
 
-Under hybrid, two remain — **a19 and a24** — and they fail by the same
-mechanism, in opposite directions:
+Under the shipped configuration one question misses on `verbatim` (a19) and
+eight on `paraphrase`. a19 fails the same way in both: lexical ranks the gold
+chunk 1st, vector never returns it at all, and fusion at half weight is not
+enough to carry it into the top 5 on lexical evidence alone.
 
-- **a24**: vector ranked the gold chunk **1st** (cosine 0.673, decisive);
-  lexical never returned it. Fused rank: 10.
-- **a19**: lexical ranked the gold chunk **1st**; vector never returned it.
-  Fused rank: 8.
+`npm run eval:diagnose a19 --style=paraphrase` prints the vector, lexical and
+fused lists side by side with the gold chunk's position in each.
 
-At k=60 an item ranked 1st by one retriever scores 1/61 = 0.0164, while an item
-ranked 5th by *both* scores 2/65 = 0.0308. Agreement beats confidence. That is
-usually what you want — it is why hit-rate rose 12 points — but it buries the
-case where one retriever is decisively right and the other is silent.
-
-`npm run eval:diagnose` prints the vector, lexical and fused lists side by side
-with the gold chunk's position in each, which is how both were identified.
+The paraphrase misses are the real target for future work: they are cases where
+neither retriever finds the passage, so no amount of fusion tuning helps. Better
+chunking and a reranker over a wider candidate pool are the levers.
 
 ## Two honest caveats about reading these numbers
 

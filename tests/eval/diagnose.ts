@@ -26,9 +26,12 @@ import {
 } from "@/lib/retrieval";
 import { reciprocalRankFusion } from "@/lib/rrf";
 import { loadCorpusChunks, chunkContains, CORPUS_NAME } from "./corpus";
-import { ANSWERABLE } from "./golden";
+import { ANSWERABLE, STYLES, questionFor, type QuestionStyle } from "./golden";
 
-const DEFAULT_IDS = ["a05", "a07", "a17", "a19", "a22"];
+const DEFAULT_IDS = ["a19", "a24"];
+
+const STYLE: QuestionStyle =
+  (STYLES.find((s) => process.argv.includes(`--style=${s}`)) as QuestionStyle) ?? "verbatim";
 
 async function createUser(): Promise<string> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -118,9 +121,10 @@ async function main(): Promise<void> {
     const supabase = createServiceClient();
 
     for (const q of questions) {
+      const question = questionFor(q, STYLE);
       const embedding = await openai.embeddings.create({
         model: EMBEDDING_MODEL,
-        input: q.question,
+        input: question,
       });
 
       const vector = await matchChunks(
@@ -129,10 +133,10 @@ async function main(): Promise<void> {
         userId,
         CANDIDATE_COUNT
       );
-      const lexical = await matchChunksFts(supabase, q.question, userId, CANDIDATE_COUNT);
+      const lexical = await matchChunksFts(supabase, question, userId, CANDIDATE_COUNT);
       const fused = reciprocalRankFusion([vector, lexical], chunkKey);
 
-      console.log(`=== ${q.id}: ${q.question}`);
+      console.log(`=== ${q.id} [${STYLE}]: ${question}`);
       console.log(`  gold snippet: ${JSON.stringify(q.goldSnippet.slice(0, 60))}…`);
       console.log(`  vector  top${MATCH_COUNT}: ${summarise(vector, MATCH_COUNT)}`);
       console.log(`  lexical top${MATCH_COUNT}: ${summarise(lexical, MATCH_COUNT) || "(no rows)"}`);

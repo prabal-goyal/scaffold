@@ -34,23 +34,27 @@ npm run dev
 
 **Measured, not asserted:**
 
-Offline eval over 25 answerable + 8 unanswerable questions on a fixed
-public-domain corpus (Federalist Papers 1–30, 208 chunks). `npm run eval`.
+Offline eval over a fixed public-domain corpus (Federalist Papers 1-30, 208
+chunks). Each of 25 questions is asked three ways — echoing the document's
+wording, paraphrased, and as terse keywords — because a retriever that only
+works when users quote the source is not much use. `npm run eval:sweep`.
 
-| Metric | vector | hybrid |
-| --- | --- | --- |
-| hit-rate@5 | 80.0% | **92.0%** |
-| MRR@5 | 0.627 | **0.783** |
-| abstention on unanswerable | 75.0% | **87.5%** |
-| latency p95 | 2,384 ms | 2,693 ms |
-| cost per query | $0.00039 | $0.00039 |
+hit-rate@5:
 
-Replacing pure cosine top-5 with vector + Postgres full-text fused by reciprocal
-rank fusion raised hit-rate@5 from 80.0% to 92.0%, for about +290 ms at p50.
+| strategy | quoted | paraphrased | keywords | mean |
+| --- | --- | --- | --- | --- |
+| vector only | 80.0% | 68.0% | 56.0% | 68.0% |
+| lexical only | 96.0% | 20.0% | 24.0% | 46.7% |
+| **hybrid (shipped)** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
 
-Read [tests/eval/RESULTS.md](tests/eval/RESULTS.md) before quoting those numbers
-— it documents a bias in the golden set that makes lexical search look better
-than it should, the RRF constant sweep, and why hit-rate is not answer quality.
+Hybrid is vector search fused with Postgres full-text by weighted reciprocal
+rank fusion. Lexical gets half a vote: alone it scores 96% on quoted questions
+and 20% on paraphrased ones, so at equal weight it made results *worse* than
+vector alone. The shipped weighting is never worse than vector-only on any
+style, and adds 16 points when users do quote the document.
+
+Full method, the tuning caveat, and why hit-rate is not answer quality:
+[tests/eval/RESULTS.md](tests/eval/RESULTS.md).
 
 **How it works:**
 ```

@@ -27,9 +27,12 @@ import {
 } from "@/lib/retrieval";
 import { reciprocalRankFusion } from "@/lib/rrf";
 import { loadCorpusChunks, chunkContains, CORPUS_NAME } from "./corpus";
-import { ANSWERABLE } from "./golden";
+import { ANSWERABLE, STYLES, questionFor, type QuestionStyle } from "./golden";
+import { lexicalOverlap } from "./overlap";
 
-const K_VALUES = [0, 1, 2, 5, 10, 20, 40, 60, 120];
+const K_VALUES = [0, 5, 10, 60];
+// Weight applied to the lexical list; the vector list is always 1.
+const LEXICAL_WEIGHTS = [0.25, 0.5, 1];
 
 interface Candidates {
   id: string;
@@ -95,14 +98,21 @@ async function ingest(userId: string): Promise<void> {
   if (insertError) throw insertError;
 }
 
-function score(lists: RetrievedChunk[][], items: Candidates[], k: number | null) {
+function score(
+  lists: RetrievedChunk[][],
+  items: Candidates[],
+  k: number | null,
+  lexicalWeight = 1
+) {
   let hits = 0;
   let mrrTotal = 0;
   const misses: string[] = [];
 
   items.forEach((item, i) => {
     const fused =
-      k === null ? lists[i] : reciprocalRankFusion([item.vector, item.lexical], chunkKey, k);
+      k === null
+        ? lists[i]
+        : reciprocalRankFusion([item.vector, item.lexical], chunkKey, k, [1, lexicalWeight]);
     const top = fused.slice(0, MATCH_COUNT);
     const rank = top.findIndex((c) => chunkContains(c.content, item.goldSnippet)) + 1;
 
@@ -126,48 +136,87 @@ async function main(): Promise<void> {
   assertEnv();
 
   const userId = await createUser();
-  const rows: string[] = [];
+
 
   try {
     console.log("ingesting corpus…");
     await ingest(userId);
     const supabase = createServiceClient();
 
-    console.log(`fetching candidates for ${ANSWERABLE.length} questions…`);
-    const items: Candidates[] = [];
-    for (const q of ANSWERABLE) {
-      const embedding = await openai.embeddings.create({
-        model: EMBEDDING_MODEL,
-        input: q.question,
-      });
-      const [vector, lexical] = await Promise.all([
-        matchChunks(supabase, embedding.data[0].embedding, userId, CANDIDATE_COUNT),
-        matchChunksFts(supabase, q.question, userId, CANDIDATE_COUNT),
-      ]);
-      items.push({ id: q.id, goldSnippet: q.goldSnippet, vector, lexical });
+    const perStyle = new Map<QuestionStyle, Candidates[]>();
+
+    for (const style of STYLES) {
+      console.log(`fetching candidates: ${style} (${ANSWERABLE.length} questions)…`);
+      const items: Candidates[] = [];
+
+      for (const q of ANSWERABLE) {
+        const question = questionFor(q, style);
+        const embedding = await openai.embeddings.create({
+          model: EMBEDDING_MODEL,
+          input: question,
+        });
+        const [vector, lexical] = await Promise.all([
+          matchChunks(supabase, embedding.data[0].embedding, userId, CANDIDATE_COUNT),
+          matchChunksFts(supabase, question, userId, CANDIDATE_COUNT),
+        ]);
+        items.push({ id: q.id, goldSnippet: q.goldSnippet, vector, lexical });
+      }
+
+      perStyle.set(style, items);
     }
 
-    console.log("\n| strategy | hit-rate@5 | MRR@5 | misses |");
-    console.log("| --- | --- | --- | --- |");
-
-    const vectorOnly = score(items.map((i) => i.vector), items, null);
-    rows.push(
-      `| vector only | ${(vectorOnly.hitRate * 100).toFixed(1)}% | ${vectorOnly.mrr.toFixed(3)} | ${vectorOnly.misses.join(", ")} |`
-    );
-
-    const lexicalOnly = score(items.map((i) => i.lexical), items, null);
-    rows.push(
-      `| lexical only | ${(lexicalOnly.hitRate * 100).toFixed(1)}% | ${lexicalOnly.mrr.toFixed(3)} | ${lexicalOnly.misses.join(", ")} |`
-    );
-
-    for (const k of K_VALUES) {
-      const r = score([], items, k);
-      rows.push(
-        `| RRF k=${k} | ${(r.hitRate * 100).toFixed(1)}% | ${r.mrr.toFixed(3)} | ${r.misses.join(", ") || "—"} |`
-      );
+    // ── How much each style lifts its wording from the passage ──────────────
+    console.log(`
+### Question wording overlap with the gold passage
+`);
+    console.log(`| style | mean overlap |`);
+    console.log(`| --- | --- |`);
+    for (const style of STYLES) {
+      const mean =
+        ANSWERABLE.reduce((sum, q) => sum + lexicalOverlap(questionFor(q, style), q.goldSnippet), 0) /
+        ANSWERABLE.length;
+      console.log(`| ${style} | ${mean.toFixed(3)} |`);
     }
 
-    console.log(rows.join("\n"));
+    // ── hit-rate@5 ──────────────────────────────────────────────────────────
+    const strategies: {
+      label: string;
+      k: number | null;
+      lexicalOnly?: boolean;
+      weight?: number;
+    }[] = [
+      { label: "vector only", k: null },
+      { label: "lexical only", k: null, lexicalOnly: true },
+      ...K_VALUES.flatMap((k) =>
+        LEXICAL_WEIGHTS.map((w) => ({ label: `RRF k=${k} w=${w}`, k, weight: w }))
+      ),
+    ];
+
+    for (const metric of ["hitRate", "mrr"] as const) {
+      const title = metric === "hitRate" ? "hit-rate@5" : "MRR@5";
+      console.log(`
+### ${title}
+`);
+      console.log(`| strategy | ${STYLES.join(" | ")} | mean |`);
+      console.log(`| --- |${STYLES.map(() => " --- |").join("")} --- |`);
+
+      for (const strat of strategies) {
+        const cells: number[] = [];
+        for (const style of STYLES) {
+          const items = perStyle.get(style)!;
+          const lists =
+            strat.k === null
+              ? items.map((i) => (strat.lexicalOnly ? i.lexical : i.vector))
+              : [];
+          const r = score(lists, items, strat.k, strat.weight ?? 1);
+          cells.push(metric === "hitRate" ? r.hitRate : r.mrr);
+        }
+        const mean = cells.reduce((a, b) => a + b, 0) / cells.length;
+        const fmt = (v: number) =>
+          metric === "hitRate" ? `${(v * 100).toFixed(1)}%` : v.toFixed(3);
+        console.log(`| ${strat.label} | ${cells.map(fmt).join(" | ")} | **${fmt(mean)}** |`);
+      }
+    }
   } finally {
     await deleteUser(userId);
     console.log("\ncleaned up.");

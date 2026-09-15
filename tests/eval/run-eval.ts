@@ -35,7 +35,7 @@ import {
 } from "@/lib/retrieval";
 import { buildSystemPrompt, ABSTENTION_PHRASE } from "@/lib/prompt";
 import { loadCorpusChunks, chunkContains, CORPUS_NAME } from "./corpus";
-import { ANSWERABLE, UNANSWERABLE } from "./golden";
+import { ANSWERABLE, UNANSWERABLE, STYLES, questionFor, type QuestionStyle } from "./golden";
 
 // ── Pricing ─────────────────────────────────────────────────────────────────
 // USD per million tokens, entered by hand on 2026-09-15. OpenAI changes these;
@@ -55,6 +55,12 @@ const EMBED_BATCH_SIZE = 100;
 type Strategy = "vector" | "hybrid";
 
 const STRATEGY: Strategy = process.argv.includes("--hybrid") ? "hybrid" : "vector";
+
+// Which phrasing of each question to use end-to-end. The full style matrix
+// lives in eval:sweep, which needs no LLM call; this picks one for the
+// generation-dependent metrics.
+const STYLE: QuestionStyle =
+  (STYLES.find((s) => process.argv.includes(`--style=${s}`)) as QuestionStyle) ?? "verbatim";
 
 interface QueryResult {
   id: string;
@@ -254,7 +260,7 @@ async function main(): Promise<void> {
     // Sequential on purpose: concurrent requests would contend and make the
     // latency numbers describe the harness rather than the pipeline.
     for (const q of ANSWERABLE) {
-      const result = await runQuery(user.id, q.id, q.question, q.goldSnippet);
+      const result = await runQuery(user.id, q.id, questionFor(q, STYLE), q.goldSnippet);
       results.push(result);
       console.log(`  ${q.id}  rank=${result.rank ?? "MISS"}  ${result.latencyMs}ms`);
     }
@@ -338,13 +344,14 @@ function report(results: QueryResult[], corpusTokens: number): void {
   const leaks = unanswerable.filter((r) => !r.abstained).map((r) => r.id);
   if (leaks.length) console.log(`answered when it should not have: ${leaks.join(", ")}`);
 
-  const outPath = path.join(process.cwd(), "tests", "eval", `results-${STRATEGY}.json`);
+  const outPath = path.join(process.cwd(), "tests", "eval", `results-${STRATEGY}-${STYLE}.json`);
   writeFileSync(
     outPath,
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
         strategy: STRATEGY,
+        style: STYLE,
         model: { embedding: EMBEDDING_MODEL, chat: CHAT_MODEL },
         matchCount: MATCH_COUNT,
         metrics: { hitRate, mrr, abstentionRate, falseAbstention, p50, p95 },

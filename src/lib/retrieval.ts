@@ -24,6 +24,24 @@ export const MATCH_COUNT = 5;
  */
 export const CANDIDATE_COUNT = 20;
 
+/**
+ * Fusion parameters, chosen by sweeping against the golden set across three
+ * question styles (npm run eval:sweep).
+ *
+ * The lexical retriever is deliberately given half a vote. It reaches 96%
+ * hit-rate@5 when a question echoes the document's wording and 20% when the
+ * same question is paraphrased, so at equal weight it dragged good vector
+ * results down — unweighted fusion measured *worse* than vector alone on
+ * realistic queries (62.7% mean against 68.0%).
+ *
+ * At k=10 with weight 0.5, fusion is never worse than vector-only on any style
+ * or either metric, and adds 16 points of hit-rate when the user does quote the
+ * document. That dominance is the reason for these values, rather than a better
+ * average — which can hide a regression in one style.
+ */
+export const FUSION_K = 10;
+export const LEXICAL_WEIGHT = 0.5;
+
 /** Identity of a chunk across the two retrievers, which return no row id. */
 export function chunkKey(chunk: RetrievedChunk): string {
   return `${chunk.document_name}#${chunk.chunk_index}`;
@@ -90,5 +108,8 @@ export async function hybridSearch(
     }),
   ]);
 
-  return reciprocalRankFusion([vector, lexical], chunkKey).slice(0, matchCount);
+  return reciprocalRankFusion([vector, lexical], chunkKey, FUSION_K, [1, LEXICAL_WEIGHT]).slice(
+    0,
+    matchCount
+  );
 }

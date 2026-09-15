@@ -292,3 +292,17 @@ test("a smaller k sharpens the advantage of rank 1", () => {
   // With almost none, being ranked first dominates.
   assert.equal(reciprocalRankFusion(lists, key, 0)[0], "top");
 });
+
+test("a down-weighted list contributes without overriding the other", () => {
+  // Models the a24 failure: vector ranks the gold chunk 1st, lexical never
+  // returns it, and lexical's own favourite sits far down the vector list.
+  const vector = ["gold", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "x"];
+  const lexical = ["x", "l2"];
+
+  // Equal weight: "x" is promoted past a chunk vector was certain about.
+  assert.equal(reciprocalRankFusion([vector, lexical], key, 1)[0], "x");
+
+  // Down-weighted, lexical can still promote "x" up the list, but cannot
+  // displace a confident vector ranking on its own.
+  assert.equal(reciprocalRankFusion([vector, lexical], key, 1, [1, 0.25])[0], "gold");
+});
