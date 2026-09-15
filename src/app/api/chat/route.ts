@@ -4,7 +4,9 @@ import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { chatRequestSchema, parseJsonBody } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { streamText, createDataStreamResponse } from "ai";
+import { matchChunks } from "@/lib/retrieval";
+import { buildSystemPrompt } from "@/lib/prompt";
+import { streamText, createDataStreamResponse, type JSONValue } from "ai";
 
 export const maxDuration = 30;
 
@@ -58,45 +60,31 @@ export async function POST(req: Request) {
   const questionVector = embeddingResponse.data[0].embedding;
 
   // ── Step 2: Find the most relevant chunks ──────────────────────────────────
+  // matchChunks and buildSystemPrompt are shared with the evaluation harness,
+  // so the metrics in the README describe this exact path.
   const supabase = createServiceClient();
-  const { data: chunks, error } = await supabase.rpc("match_chunks", {
-    query_embedding: questionVector,
-    match_count: 5,
-    filter_user_id: user.id,
-  });
 
-  if (error) {
+  let chunks;
+  try {
+    chunks = await matchChunks(supabase, questionVector, user.id);
+  } catch (retrievalError) {
     // Logged in full, returned in outline: the raw message carries column and
     // constraint names that only help someone probing the schema.
-    console.error("match_chunks failed", error);
+    console.error("match_chunks failed", retrievalError);
     return json({ error: "Could not search your documents" }, 500);
   }
 
   // ── Step 3: Build the prompt ───────────────────────────────────────────────
-  type Chunk = { content: string; document_name: string; chunk_index: number; similarity: number };
-
-  const context = (chunks as Chunk[])
-    .map(
-      (c, i) =>
-        `[Source ${i + 1} — ${c.document_name}, chunk ${c.chunk_index} (${Math.round(c.similarity * 100)}% match)]\n${c.content}`
-    )
-    .join("\n\n---\n\n");
-
-  const systemPrompt = `You are a helpful assistant that answers questions strictly based on the document excerpts provided below.
-
-Rules:
-- Only use information from the sources below. Do not use outside knowledge.
-- If the answer is not in the sources, say "I couldn't find this in the provided documents."
-- At the end of your answer, write "Sources used: [1], [3]" listing which source numbers you drew from.
-
-DOCUMENT EXCERPTS:
-${context}`;
+  const systemPrompt = buildSystemPrompt(chunks);
 
   // ── Step 4: Stream the response ────────────────────────────────────────────
   return createDataStreamResponse({
     execute: async (dataStream) => {
-      // Send retrieved chunks to the client before text tokens arrive
-      dataStream.writeData({ sources: chunks });
+      // Send retrieved chunks to the client before text tokens arrive.
+      // The assertion is needed because the SDK's data channel is typed as
+      // JSONValue, which requires an index signature; RetrievedChunk is
+      // JSON-shaped but declares named fields instead.
+      dataStream.writeData({ sources: chunks as unknown as JSONValue });
 
       const result = streamText({
         model: aiOpenai(CHAT_MODEL),

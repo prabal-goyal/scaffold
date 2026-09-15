@@ -32,6 +32,22 @@ npm run dev
    *Confirm email* **off**. Sign-up expects a session back immediately; with
    confirmation on it fails with a misleading error.
 
+**Measured, not asserted:**
+
+Offline eval over 25 answerable + 8 unanswerable questions on a fixed
+public-domain corpus (Federalist Papers 1–30, 208 chunks). `npm run eval`.
+
+| Metric | Baseline |
+| --- | --- |
+| hit-rate@5 | **80.0%** |
+| MRR@5 | **0.627** |
+| abstention on unanswerable | **75.0%** |
+| latency p95 | 2,450 ms |
+| cost per query | $0.00039 |
+
+Retrieval is pure cosine top-5 today. Full method, the five misses, and two
+caveats about what hit-rate does *not* mean: [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
+
 **How it works:**
 ```
 PDF → chunks → embeddings → vector DB

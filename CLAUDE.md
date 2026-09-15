@@ -93,18 +93,23 @@ CV/portfolio claim it unlocks.
 
 ### P1 — The eval harness (highest-value item in the project)
 
-3. **Build a real evaluation harness.** Today "evaluation" is a thumbs-up
-   percentage from production traffic — there is no offline, repeatable measure of
-   retrieval quality. Build `tests/run-tests.ts` around 25-30 golden Q/A pairs over
-   a fixed committed PDF, measuring per run:
-   - **hit-rate@5** and **MRR@5** — does the gold chunk get retrieved, and at what rank
-   - **groundedness** — LLM judge over (answer, retrieved chunks)
-   - **abstention rate** — how often it correctly says "I couldn't find this in the
-     provided documents" on deliberately unanswerable questions
-   - **p95 latency and $ per query**
+3. ~~**Build a real evaluation harness.**~~ **Done.** `tests/eval/` — fixed
+   public-domain corpus (Federalist Papers 1-30, 208 chunks), 25 answerable +
+   8 unanswerable questions, measuring hit-rate@5, MRR@5, abstention, p95
+   latency and $/query. Baseline committed in `tests/eval/RESULTS.md`:
+   **hit-rate@5 80.0%, MRR@5 0.627, abstention 75.0%**.
 
-   Commit the results table to the README. That table is the differentiator —
-   almost no RAG side project has one.
+   Notes for whoever extends it:
+   - Gold answers are matched by **snippet containment, not chunk index**, so
+     the set survives a change to chunking — which is what makes (5) possible.
+   - `npm run eval:validate` is free and checks every gold snippet still exists.
+     Run it after touching the corpus or the golden set.
+   - The harness imports `matchChunks` and `buildSystemPrompt` from `src/lib/`
+     on purpose. A harness with its own copy of the prompt measures a pipeline
+     the app does not run.
+   - Still missing: **groundedness**. `a05` shows why it matters — a retrieval
+     miss produced a confident wrong answer, which hit-rate alone scores the
+     same as a retrieval miss that correctly abstained.
 
 4. **Hybrid search + reranking.** Retrieval is currently pure cosine top-5 via one
    `match_chunks` RPC. Add Postgres `tsvector` full-text search, fuse with the
