@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { chatRequestSchema, parseJsonBody } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { matchChunks } from "@/lib/retrieval";
+import { hybridSearch } from "@/lib/retrieval";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { streamText, createDataStreamResponse, type JSONValue } from "ai";
 
@@ -60,13 +60,19 @@ export async function POST(req: Request) {
   const questionVector = embeddingResponse.data[0].embedding;
 
   // ── Step 2: Find the most relevant chunks ──────────────────────────────────
-  // matchChunks and buildSystemPrompt are shared with the evaluation harness,
+  // hybridSearch and buildSystemPrompt are shared with the evaluation harness,
   // so the metrics in the README describe this exact path.
+  //
+  // Hybrid (vector + full-text, fused by reciprocal rank) measured 92.0%
+  // hit-rate@5 against 80.0% for pure vector on the golden set, and beat it at
+  // every fusion constant tried. Lexical retrieval fails soft inside
+  // hybridSearch, so this degrades to vector-only rather than erroring if the
+  // full-text migration has not been applied.
   const supabase = createServiceClient();
 
   let chunks;
   try {
-    chunks = await matchChunks(supabase, questionVector, user.id);
+    chunks = await hybridSearch(supabase, questionVector, question, user.id);
   } catch (retrievalError) {
     // Logged in full, returned in outline: the raw message carries column and
     // constraint names that only help someone probing the schema.

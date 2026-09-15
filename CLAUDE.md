@@ -111,13 +111,28 @@ CV/portfolio claim it unlocks.
      miss produced a confident wrong answer, which hit-rate alone scores the
      same as a retrieval miss that correctly abstained.
 
-4. **Hybrid search + reranking.** Retrieval is currently pure cosine top-5 via one
-   `match_chunks` RPC. Add Postgres `tsvector` full-text search, fuse with the
-   vector results using Reciprocal Rank Fusion, and optionally rerank top-20 → top-5
-   with a cross-encoder. Measure the before/after with (3).
-   *Unlocks:* "Raised retrieval hit-rate@5 from X% to Y% by replacing pure cosine
-   top-k with RRF hybrid search plus cross-encoder reranking" — the exact
-   before/after number the CV needs.
+4. ~~**Hybrid search + reranking.**~~ **Hybrid done; reranking not attempted.**
+   Postgres `tsvector` full-text search fused with vector results by reciprocal
+   rank fusion (`src/lib/rrf.ts`), shipped in `/api/chat`. Migrations 0003+0004.
+   **hit-rate@5 80.0% → 92.0%, MRR@5 0.627 → 0.783**, +290 ms p50.
+
+   Read before building on this:
+   - **The golden set is biased toward lexical retrieval** — questions were
+     written from distinctive passages, so they share wording with their own
+     gold chunks. Pure lexical scores 96.0% here, which is almost certainly an
+     artifact. Adding paraphrased questions is the highest-value next step on
+     the harness, and it must happen before lexical-vs-hybrid means anything.
+   - RRF `k` is left at 60 on purpose. `npm run eval:sweep` shows 10-120 is a
+     flat plateau and low k wins by one question — noise at n=25, and tuning on
+     the measured set is overfitting.
+   - The two remaining misses (a19, a24) both fail the same way: one retriever
+     ranks the gold chunk 1st, the other never returns it, and RRF's preference
+     for agreement buries it. A reranker over the union of candidates is the
+     obvious fix, and is the part of this item still undone.
+   - A lexical retriever returning zero rows looks exactly like one that works:
+     the first version of 0003 used `websearch_to_tsquery`, which ANDs terms, so
+     it matched nothing and hybrid silently ran as vector-only with plausible
+     metrics. The runner now reports lexical contribution per run.
 
 5. **Use a real tokenizer.** `src/lib/chunker.ts` estimates tokens as
    `Math.ceil(text.length / 4)`, so the chunk sizes are character approximations,

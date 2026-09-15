@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reciprocalRankFusion } from "./rrf";
 
 // No secret lives here — the caller supplies the client — so this module is
 // safe to use from the evaluation harness as well as from the chat route.
@@ -13,6 +14,20 @@ export interface RetrievedChunk {
 }
 
 export const MATCH_COUNT = 5;
+
+/**
+ * How many candidates each retriever contributes to fusion.
+ *
+ * Wider than MATCH_COUNT on purpose: an item ranked 12th by vector search and
+ * 3rd by lexical search should be able to surface, and it cannot if each list
+ * is truncated to 5 before fusing.
+ */
+export const CANDIDATE_COUNT = 20;
+
+/** Identity of a chunk across the two retrievers, which return no row id. */
+export function chunkKey(chunk: RetrievedChunk): string {
+  return `${chunk.document_name}#${chunk.chunk_index}`;
+}
 
 export async function matchChunks(
   supabase: SupabaseClient,
@@ -29,4 +44,51 @@ export async function matchChunks(
   if (error) throw error;
 
   return (data ?? []) as RetrievedChunk[];
+}
+
+/** Lexical retrieval over the tsvector index (migration 0003). */
+export async function matchChunksFts(
+  supabase: SupabaseClient,
+  queryText: string,
+  userId: string,
+  matchCount: number = CANDIDATE_COUNT
+): Promise<RetrievedChunk[]> {
+  const { data, error } = await supabase.rpc("match_chunks_fts", {
+    query_text: queryText,
+    match_count: matchCount,
+    filter_user_id: userId,
+  });
+
+  if (error) throw error;
+
+  return (data ?? []) as RetrievedChunk[];
+}
+
+/**
+ * Hybrid retrieval: vector and lexical candidates fused by reciprocal rank.
+ *
+ * The two retrievers run concurrently — they are independent queries and the
+ * latency budget is the user waiting, so there is no reason to serialise them.
+ *
+ * Lexical search is allowed to fail softly. It depends on migration 0003 and on
+ * the query producing a usable tsquery; if it errors, hybrid degrades to pure
+ * vector search rather than failing the request. A retrieval that is merely
+ * worse beats a chat that returns 500.
+ */
+export async function hybridSearch(
+  supabase: SupabaseClient,
+  queryEmbedding: number[],
+  queryText: string,
+  userId: string,
+  matchCount: number = MATCH_COUNT
+): Promise<RetrievedChunk[]> {
+  const [vector, lexical] = await Promise.all([
+    matchChunks(supabase, queryEmbedding, userId, CANDIDATE_COUNT),
+    matchChunksFts(supabase, queryText, userId, CANDIDATE_COUNT).catch((error) => {
+      console.error("lexical retrieval failed, falling back to vector only", error);
+      return [] as RetrievedChunk[];
+    }),
+  ]);
+
+  return reciprocalRankFusion([vector, lexical], chunkKey).slice(0, matchCount);
 }

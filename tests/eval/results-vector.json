@@ -1,5 +1,6 @@
 {
-  "generatedAt": "2026-09-15T04:17:20.362Z",
+  "generatedAt": "2026-09-15T04:33:06.833Z",
+  "strategy": "vector",
   "model": {
     "embedding": "text-embedding-3-small",
     "chat": "gpt-4o-mini"
@@ -10,11 +11,11 @@
     "mrr": 0.6266666666666667,
     "abstentionRate": 0.75,
     "falseAbstention": 0.08,
-    "p50": 1622,
-    "p95": 2450
+    "p50": 1738,
+    "p95": 2384
   },
   "cost": {
-    "perQuery": 0.0003860496969696969,
+    "perQuery": 0.0003864496969696969,
     "corpusIndex": 0.00177186
   },
   "results": [
@@ -46,7 +47,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1780,
+      "latencyMs": 2329,
       "promptTokens": 2310,
       "completionTokens": 36,
       "embeddingTokens": 14,
@@ -80,11 +81,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1895,
+      "latencyMs": 2384,
       "promptTokens": 2322,
       "completionTokens": 81,
       "embeddingTokens": 9,
-      "answer": "Publius defines a pure democracy as \"a society consisting of a small number of citizens, who assemble and administer the government in person.\" He suggests that such a system can admit of no cure for the mischiefs of faction, as a common passion or interest will often be felt by a majority, leading to potential sacrifices of the weaker party or individuals. \n\nSources used: [1], [4]"
+      "answer": "Publius defines a pure democracy as \"a society consisting of a small number of citizens, who assemble and administer the government in person.\" He suggests that such a system can admit of no cure for the mischiefs of faction, as a common passion or interest will often be felt by a majority, leading to potential oppression of the weaker party or individuals. \n\nSources used: [1], [4]"
     },
     {
       "id": "a03",
@@ -114,7 +115,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1345,
+      "latencyMs": 2054,
       "promptTokens": 2375,
       "completionTokens": 28,
       "embeddingTokens": 20,
@@ -148,11 +149,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 2040,
+      "latencyMs": 2099,
       "promptTokens": 2334,
-      "completionTokens": 102,
+      "completionTokens": 97,
       "embeddingTokens": 19,
-      "answer": "Montesquieu proposed a \"CONFEDERATE REPUBLIC\" as the expedient for extending the sphere of popular government. He suggested that this form of government is a convention by which several smaller states agree to become members of a larger one, capable of increasing its power through new associations, thereby providing for the security of the united body. This structure allows for the internal advantages of a republican government while also possessing the external force of a monarchical government. \n\nSources used: [2], [3]"
+      "answer": "Montesquieu proposed a \"CONFEDERATE REPUBLIC\" as the expedient for extending the sphere of popular government. He suggested that this form of government is a convention where several smaller states agree to become members of a larger one, which allows for the security of the united body while maintaining the internal advantages of a republican government. This structure enables the confederation to withstand external forces and supports itself without internal corruptions. \n\nSources used: [2], [3]"
     },
     {
       "id": "a05",
@@ -182,7 +183,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1790,
+      "latencyMs": 1857,
       "promptTokens": 2405,
       "completionTokens": 83,
       "embeddingTokens": 18,
@@ -212,15 +213,15 @@
         },
         {
           "chunkIndex": 117,
-          "similarity": 0.5123
+          "similarity": 0.5124
         }
       ],
       "abstained": false,
-      "latencyMs": 2450,
+      "latencyMs": 2643,
       "promptTokens": 2416,
-      "completionTokens": 150,
+      "completionTokens": 171,
       "embeddingTokens": 18,
-      "answer": "The Achaean league is characterized as having a more intimate union and a wiser organization compared to the preceding Grecian example, specifically the Amphictyonic confederacy. The cities within the Achaean league retained their municipal jurisdiction, appointed their own officers, and enjoyed perfect equality. The senate of the league had exclusive rights over matters of peace and war, diplomacy, and governance, which contrasts with the earlier confederacy where such powers were less clearly defined. Additionally, while the Achaean league was not exempt from challenges, it was noted that it did not equally deserve the catastrophes that befell other confederacies, indicating a more stable and just administration during its operation. \n\nSources used: [1], [2]"
+      "answer": "The Achaean league is characterized as having a more intimate union and a wiser organization compared to the preceding Grecian example, which was the Amphictyonic confederacy. The cities within the Achaean league retained their municipal jurisdiction, appointed their own officers, and enjoyed perfect equality. The senate of the Achaean league had exclusive rights over matters of peace and war, diplomacy, and governance, which contributed to a more stable administration. In contrast, the previous confederacy was marked by a fallacious principle that led to the cities being easily manipulated and divided, resulting in their eventual subjugation by Macedon. The Achaean league, while not exempt from challenges, demonstrated more moderation and justice in its governance compared to the individual cities exercising sovereignty in isolation. \n\nSources used: [1], [2], [3]"
     },
     {
       "id": "a07",
@@ -250,11 +251,11 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1334,
+      "latencyMs": 1743,
       "promptTokens": 2355,
-      "completionTokens": 14,
+      "completionTokens": 15,
       "embeddingTokens": 18,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
     },
     {
       "id": "a08",
@@ -280,15 +281,15 @@
         },
         {
           "chunkIndex": 150,
-          "similarity": 0.4953
+          "similarity": 0.4954
         }
       ],
       "abstained": false,
-      "latencyMs": 2072,
+      "latencyMs": 2043,
       "promptTokens": 2317,
-      "completionTokens": 131,
+      "completionTokens": 128,
       "embeddingTokens": 16,
-      "answer": "Opponents claim that the genius of republics is pacific and that the spirit of commerce tends to soften the manners of men, extinguishing the inflammable humors that often lead to wars. They argue that commercial republics will not engage in ruinous contentions with each other, as they will be governed by mutual interest and will cultivate a spirit of mutual amity and concord. However, the text suggests that this view is overly optimistic and does not account for the reality of human conduct, which is often influenced more by momentary passions and immediate interests than by general considerations of policy, utility, or justice. \n\nSources used: [1]"
+      "answer": "Opponents claim that the genius of republics is pacific and that the spirit of commerce has a tendency to soften the manners of men and extinguish the passions that often lead to wars. They argue that commercial republics will not engage in ruinous conflicts with each other, as they will be governed by mutual interest and will cultivate a spirit of mutual amity and concord. However, the text also suggests that this view is overly optimistic and does not account for the reality that momentary passions and immediate interests often have a stronger influence on human conduct than general considerations of policy, utility, or justice. \n\nSources used: [1]"
     },
     {
       "id": "a09",
@@ -302,7 +303,7 @@
         },
         {
           "chunkIndex": 81,
-          "similarity": 0.5591
+          "similarity": 0.5587
         },
         {
           "chunkIndex": 76,
@@ -318,11 +319,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 2667,
+      "latencyMs": 1878,
       "promptTokens": 2380,
-      "completionTokens": 64,
+      "completionTokens": 66,
       "embeddingTokens": 17,
-      "answer": "In America, the means of revenue will chiefly depend on duties for a long time. It is indicated that excises must be confined within a narrow compass and that personal property is too precarious and invisible to be effectively taxed, leading to a reliance on taxes on consumption. \n\nSources used: [1], [3]"
+      "answer": "In America, the means of revenue will chiefly depend on duties for a long time. It is indicated that excises must be confined within a narrow compass, and that the public burdens will primarily fall on the possessors of land, as other forms of taxation are not as effective. \n\nSources used: [1], [3]"
     },
     {
       "id": "a10",
@@ -352,11 +353,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 2092,
+      "latencyMs": 1724,
       "promptTokens": 2340,
-      "completionTokens": 51,
+      "completionTokens": 48,
       "embeddingTokens": 18,
-      "answer": "The provinces of the Belgic confederacy are restrained from entering into foreign treaties, establishing imposts injurious to others, or charging their neighbors with higher duties than their own subjects without the general consent of the union. \n\nSources used: [4]"
+      "answer": "The provinces of the Belgic confederacy are restrained from entering into foreign treaties, establishing imposts injurious to others, or charging their neighbors with higher duties than their own subjects without the general consent. \n\nSources used: [4]"
     },
     {
       "id": "a11",
@@ -370,7 +371,7 @@
         },
         {
           "chunkIndex": 127,
-          "similarity": 0.4479
+          "similarity": 0.4488
         },
         {
           "chunkIndex": 131,
@@ -386,7 +387,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1622,
+      "latencyMs": 1769,
       "promptTokens": 2356,
       "completionTokens": 30,
       "embeddingTokens": 19,
@@ -420,7 +421,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1411,
+      "latencyMs": 1465,
       "promptTokens": 2366,
       "completionTokens": 22,
       "embeddingTokens": 13,
@@ -446,7 +447,7 @@
         },
         {
           "chunkIndex": 128,
-          "similarity": 0.5148
+          "similarity": 0.5149
         },
         {
           "chunkIndex": 132,
@@ -454,7 +455,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1799,
+      "latencyMs": 1814,
       "promptTokens": 2335,
       "completionTokens": 83,
       "embeddingTokens": 12,
@@ -488,7 +489,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1391,
+      "latencyMs": 1658,
       "promptTokens": 2348,
       "completionTokens": 31,
       "embeddingTokens": 22,
@@ -522,7 +523,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1361,
+      "latencyMs": 1435,
       "promptTokens": 2298,
       "completionTokens": 20,
       "embeddingTokens": 13,
@@ -556,7 +557,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1661,
+      "latencyMs": 1608,
       "promptTokens": 2328,
       "completionTokens": 41,
       "embeddingTokens": 16,
@@ -577,24 +578,24 @@
           "similarity": 0.4064
         },
         {
-          "chunkIndex": 17,
-          "similarity": 0.4013
-        },
-        {
           "chunkIndex": 88,
           "similarity": 0.4007
         },
         {
+          "chunkIndex": 17,
+          "similarity": 0.4001
+        },
+        {
           "chunkIndex": 78,
-          "similarity": 0.3853
+          "similarity": 0.3852
         }
       ],
       "abstained": false,
-      "latencyMs": 1406,
+      "latencyMs": 1269,
       "promptTokens": 2325,
-      "completionTokens": 25,
+      "completionTokens": 21,
       "embeddingTokens": 13,
-      "answer": "Spain is the country that excludes the United States from the navigation of the Mississippi. Sources used: [1], [3]"
+      "answer": "Spain excludes the United States from the navigation of the Mississippi. Sources used: [1], [4]"
     },
     {
       "id": "a18",
@@ -624,11 +625,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1906,
+      "latencyMs": 2370,
       "promptTokens": 2412,
-      "completionTokens": 81,
+      "completionTokens": 86,
       "embeddingTokens": 18,
-      "answer": "A man who doubts that disunited states would have violent contests must be \"far gone in Utopian speculations.\" It is suggested that to presume a lack of motives for such contests would be to forget that men are ambitious, vindictive, and rapacious. Therefore, the idea of harmony continuing between a number of disunited states is seen as unrealistic. \n\nSources used: [1]"
+      "answer": "A man who doubts that disunited states would have violent contests is described as being \"far gone in Utopian speculations.\" It is suggested that to presume a lack of motives for such contests would be to forget that men are ambitious, vindictive, and rapacious. This implies that the nature of humanity and the potential for conflict should not be underestimated in a state of disunion. \n\nSources used: [1]"
     },
     {
       "id": "a19",
@@ -646,7 +647,7 @@
         },
         {
           "chunkIndex": 36,
-          "similarity": 0.4035
+          "similarity": 0.4036
         },
         {
           "chunkIndex": 39,
@@ -658,11 +659,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1551,
+      "latencyMs": 1775,
       "promptTokens": 2342,
-      "completionTokens": 64,
+      "completionTokens": 67,
       "embeddingTokens": 11,
-      "answer": "The disturbances in Massachusetts that are cited as evidence of discord include the necessity for the state to raise troops for repressing disorders within the state. This situation illustrates the potential for insurrections and the need for force to maintain order, highlighting the dangers that such disturbances pose to government stability. \n\nSources used: [2]"
+      "answer": "The disturbances in Massachusetts that are cited as evidence of discord include the necessity for the state to raise troops to repress disorders within that State. This situation illustrates the potential for insurrections and the need for force to maintain order, which reflects the broader theme of how such disturbances can endanger all government. \n\nSources used: [2]"
     },
     {
       "id": "a20",
@@ -676,15 +677,15 @@
         },
         {
           "chunkIndex": 197,
-          "similarity": 0.4536
+          "similarity": 0.4537
         },
         {
           "chunkIndex": 194,
-          "similarity": 0.4381
+          "similarity": 0.438
         },
         {
           "chunkIndex": 195,
-          "similarity": 0.4229
+          "similarity": 0.4228
         },
         {
           "chunkIndex": 166,
@@ -692,7 +693,7 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1955,
+      "latencyMs": 1688,
       "promptTokens": 2405,
       "completionTokens": 54,
       "embeddingTokens": 20,
@@ -726,11 +727,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1546,
+      "latencyMs": 1481,
       "promptTokens": 2363,
-      "completionTokens": 56,
+      "completionTokens": 42,
       "embeddingTokens": 16,
-      "answer": "The resource of permanent corps in the pay of the government amounts to a standing army in time of peace, albeit a small one. This is noted as a significant point in the discussion of military establishments and their implications for the government and the public. \n\nSources used: [1]"
+      "answer": "The resource of permanent corps in the pay of the government amounts to a standing army in time of peace; a small one, indeed, but not the less real for being small. Sources used: [1]"
     },
     {
       "id": "a22",
@@ -760,11 +761,11 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1549,
+      "latencyMs": 1380,
       "promptTokens": 2334,
-      "completionTokens": 14,
+      "completionTokens": 15,
       "embeddingTokens": 15,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
     },
     {
       "id": "a23",
@@ -790,15 +791,15 @@
         },
         {
           "chunkIndex": 115,
-          "similarity": 0.5307
+          "similarity": 0.5303
         }
       ],
       "abstained": false,
-      "latencyMs": 1732,
+      "latencyMs": 1576,
       "promptTokens": 2308,
-      "completionTokens": 64,
+      "completionTokens": 61,
       "embeddingTokens": 14,
-      "answer": "Envy and jealousy would soon extinguish confidence and affection between separate confederacies. Instead of being \"joined in affection\" and free from apprehension of different \"interests,\" these negative feelings would lead to distrust and a lack of goodwill among the confederacies. \n\nSources used: [1], [2]"
+      "answer": "Envy and jealousy would soon extinguish confidence and affection between separate confederacies. Instead of being \"joined in affection\" and free from apprehension of different \"interests,\" these negative feelings would lead to distrust and discord among the confederacies. \n\nSources used: [1], [2]"
     },
     {
       "id": "a24",
@@ -828,11 +829,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 2059,
+      "latencyMs": 2293,
       "promptTokens": 2388,
-      "completionTokens": 108,
+      "completionTokens": 136,
       "embeddingTokens": 9,
-      "answer": "The first Federalist paper opens with an introduction by Hamilton to the people of the State of New York, stating that after experiencing the inefficacy of the existing federal government, they are called to deliberate on a new Constitution for the United States. It emphasizes the importance of the subject, which encompasses the existence of the Union and the safety and welfare of its parts, and poses a significant question about whether societies can establish good government through reflection and choice or if they are destined to rely on accident and force. \n\nSources used: [1]"
+      "answer": "The first Federalist paper opens with a general introduction by Hamilton, addressing the people of the State of New York. He discusses the importance of deliberating on a new Constitution for the United States, emphasizing the significance of the subject, which encompasses the existence of the Union and the safety and welfare of its parts. Hamilton reflects on the historical context, suggesting that the people of this country have the opportunity to decide whether societies can establish good government through reflection and choice, rather than relying on accident and force. He expresses hope that their choice will be guided by a true estimate of their interests, though he acknowledges the challenges posed by various local interests and biases.\n\nSources used: [1]"
     },
     {
       "id": "a25",
@@ -858,11 +859,11 @@
         },
         {
           "chunkIndex": 65,
-          "similarity": 0.4595
+          "similarity": 0.4587
         }
       ],
       "abstained": false,
-      "latencyMs": 1489,
+      "latencyMs": 1649,
       "promptTokens": 2295,
       "completionTokens": 31,
       "embeddingTokens": 10,
@@ -884,7 +885,7 @@
         },
         {
           "chunkIndex": 109,
-          "similarity": 0.476
+          "similarity": 0.4761
         },
         {
           "chunkIndex": 151,
@@ -896,11 +897,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 1894,
+      "latencyMs": 2171,
       "promptTokens": 2391,
-      "completionTokens": 113,
+      "completionTokens": 130,
       "embeddingTokens": 16,
-      "answer": "Publius argues that laws are ineffective without courts to interpret and define their true meaning and operation. He emphasizes that for treaties and laws to have force, they must be subject to judicial determinations, and to ensure uniformity in these determinations, there should be a supreme tribunal established under the same authority that forms the treaties themselves. This means that the judiciary must have the power to declare legislative acts void if they are found to be unconstitutional, as differing opinions among various courts could lead to inconsistencies in the law. \n\nSources used: [3], [4]"
+      "answer": "Publius argues that the judiciary's power is essential for the enforcement of laws and that laws are ineffective without courts to interpret and define their meaning. He emphasizes that for laws, including treaties, to have force, they must be ascertained through judicial determinations. He advocates for a supreme tribunal to ensure uniformity in legal interpretations, as having multiple courts with different final jurisdictions could lead to inconsistencies and chaos in the law. Thus, the judiciary plays a crucial role in maintaining the rule of law by having the authority to declare legislative acts unconstitutional and void if they contradict the supreme law of the land.\n\nSources used: [3], [4]"
     },
     {
       "id": "u02",
@@ -910,7 +911,7 @@
       "retrieved": [
         {
           "chunkIndex": 180,
-          "similarity": 0.3132
+          "similarity": 0.3133
         },
         {
           "chunkIndex": 109,
@@ -918,7 +919,7 @@
         },
         {
           "chunkIndex": 149,
-          "similarity": 0.2844
+          "similarity": 0.2842
         },
         {
           "chunkIndex": 154,
@@ -930,11 +931,11 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1353,
+      "latencyMs": 1391,
       "promptTokens": 2373,
-      "completionTokens": 14,
+      "completionTokens": 15,
       "embeddingTokens": 13,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
     },
     {
       "id": "u03",
@@ -964,11 +965,11 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1571,
+      "latencyMs": 1738,
       "promptTokens": 2346,
-      "completionTokens": 15,
+      "completionTokens": 14,
       "embeddingTokens": 11,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
     },
     {
       "id": "u04",
@@ -998,7 +999,7 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1361,
+      "latencyMs": 1360,
       "promptTokens": 2274,
       "completionTokens": 14,
       "embeddingTokens": 12,
@@ -1020,7 +1021,7 @@
         },
         {
           "chunkIndex": 197,
-          "similarity": 0.4944
+          "similarity": 0.4943
         },
         {
           "chunkIndex": 49,
@@ -1032,11 +1033,11 @@
         }
       ],
       "abstained": false,
-      "latencyMs": 2233,
+      "latencyMs": 2101,
       "promptTokens": 2403,
-      "completionTokens": 171,
+      "completionTokens": 147,
       "embeddingTokens": 13,
-      "answer": "A bill of rights is described as unnecessary and even dangerous because it may lead to a failure in properly balancing the legislative authority with the need for national defense. The argument suggests that restraining legislative authority in this manner is a refinement that arises from an excessive zeal for liberty, which may not be enlightened. It is noted that this idea has not gained widespread acceptance, with only a couple of states, Pennsylvania and North Carolina, endorsing it, while others have wisely judged that confidence must be placed somewhere. The concern is that imposing such restrictions could embarrass the government and endanger public safety, as it might hinder the government's ability to act effectively in defense matters. Thus, the opponents of the proposed Constitution are seen as advocating for a position that could lead to more dangerous and extravagant outcomes rather than correcting past extremes.\n\nSources used: [2], [5]"
+      "answer": "A bill of rights is described as unnecessary and even dangerous because it may lead to a failure in properly balancing the legislative authority and the means of providing for national defense. The argument suggests that restraining legislative authority in this regard is a refinement born from an excessive zeal for liberty, which could result in the government being embarrassed and public safety being endangered by imposing imprudent restrictions. It is posited that confidence must be placed somewhere, and it is better to risk the abuse of that confidence than to hinder the government’s ability to ensure public safety. The opponents of the proposed Constitution are seen as advocating for a system that could lead to more dangerous and extravagant outcomes, rather than correcting past extremes. \n\nSources used: [2], [5]"
     },
     {
       "id": "u06",
@@ -1062,11 +1063,11 @@
         },
         {
           "chunkIndex": 64,
-          "similarity": 0.2761
+          "similarity": 0.276
         }
       ],
       "abstained": true,
-      "latencyMs": 1153,
+      "latencyMs": 1285,
       "promptTokens": 2381,
       "completionTokens": 15,
       "embeddingTokens": 12,
@@ -1100,7 +1101,7 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1332,
+      "latencyMs": 1423,
       "promptTokens": 2261,
       "completionTokens": 14,
       "embeddingTokens": 9,
@@ -1134,7 +1135,7 @@
         }
       ],
       "abstained": true,
-      "latencyMs": 1365,
+      "latencyMs": 1400,
       "promptTokens": 2340,
       "completionTokens": 15,
       "embeddingTokens": 13,

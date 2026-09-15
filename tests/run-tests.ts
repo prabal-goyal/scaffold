@@ -9,6 +9,7 @@ import {
   MAX_MESSAGE_CHARS,
   MAX_EVAL_TEXT_CHARS,
 } from "../src/lib/validation";
+import { reciprocalRankFusion } from "../src/lib/rrf";
 
 // chunkText targets 500 tokens per chunk with 50 tokens of overlap, and
 // estimates 4 characters per token. These tests exercise that behaviour
@@ -234,4 +235,60 @@ test("rejects unbounded eval sources and oversized text", () => {
     false,
     "rating must be 1 or -1"
   );
+});
+
+// ── reciprocalRankFusion ────────────────────────────────────────────────────
+
+const key = (s: string) => s;
+
+test("keeps a single list in its original order", () => {
+  assert.deepEqual(reciprocalRankFusion([["a", "b", "c"]], key), ["a", "b", "c"]);
+});
+
+test("promotes an item both lists rank moderately over one list's favourite", () => {
+  // "x" is 1st for the first retriever but absent from the second.
+  // "y" is 2nd and 2nd — weaker individually, stronger in agreement.
+  const fused = reciprocalRankFusion(
+    [
+      ["x", "y", "z"],
+      ["w", "y", "v"],
+    ],
+    key
+  );
+
+  assert.equal(fused[0], "y", "the item both retrievers rank should win");
+});
+
+test("deduplicates items appearing in both lists", () => {
+  const fused = reciprocalRankFusion(
+    [
+      ["a", "b"],
+      ["b", "a"],
+    ],
+    key
+  );
+
+  assert.deepEqual([...fused].sort(), ["a", "b"], "each item appears once");
+  assert.equal(fused.length, 2);
+});
+
+test("includes items unique to one list", () => {
+  const fused = reciprocalRankFusion([["a"], ["b"]], key);
+  assert.deepEqual([...fused].sort(), ["a", "b"]);
+});
+
+test("tolerates an empty list, which is the vector-only fallback", () => {
+  assert.deepEqual(reciprocalRankFusion([["a", "b"], []], key), ["a", "b"]);
+});
+
+test("a smaller k sharpens the advantage of rank 1", () => {
+  const lists = [
+    ["top", "second"],
+    ["other", "second"],
+  ];
+
+  // With heavy damping, agreement on "second" wins.
+  assert.equal(reciprocalRankFusion(lists, key, 60)[0], "second");
+  // With almost none, being ranked first dominates.
+  assert.equal(reciprocalRankFusion(lists, key, 0)[0], "top");
 });

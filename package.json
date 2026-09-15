@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "eval:corpus": "tsx tests/eval/build-corpus.ts",
     "eval": "tsx --conditions=react-server tests/eval/run-eval.ts",
-    "eval:validate": "tsx tests/eval/validate-golden.ts"
+    "eval:validate": "tsx tests/eval/validate-golden.ts",
+    "eval:hybrid": "tsx --conditions=react-server tests/eval/run-eval.ts --hybrid",
+    "eval:diagnose": "tsx --conditions=react-server tests/eval/diagnose.ts",
+    "eval:sweep": "tsx --conditions=react-server tests/eval/sweep.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.24",

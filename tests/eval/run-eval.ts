@@ -26,7 +26,13 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { openai, EMBEDDING_MODEL, CHAT_MODEL } from "@/lib/openai";
 import { createServiceClient } from "@/lib/supabase.service";
-import { matchChunks, MATCH_COUNT } from "@/lib/retrieval";
+import {
+  matchChunks,
+  matchChunksFts,
+  hybridSearch,
+  CANDIDATE_COUNT,
+  MATCH_COUNT,
+} from "@/lib/retrieval";
 import { buildSystemPrompt, ABSTENTION_PHRASE } from "@/lib/prompt";
 import { loadCorpusChunks, chunkContains, CORPUS_NAME } from "./corpus";
 import { ANSWERABLE, UNANSWERABLE } from "./golden";
@@ -43,6 +49,13 @@ const PRICING = {
 
 const EMBED_BATCH_SIZE = 100;
 
+// Which retriever to measure. Both run against the identical corpus and golden
+// set, so the two runs are directly comparable — that paired comparison is
+// what the harness is actually good at, more than either absolute number.
+type Strategy = "vector" | "hybrid";
+
+const STRATEGY: Strategy = process.argv.includes("--hybrid") ? "hybrid" : "vector";
+
 interface QueryResult {
   id: string;
   question: string;
@@ -52,6 +65,8 @@ interface QueryResult {
   /** What retrieval actually returned — without this a miss cannot be diagnosed. */
   retrieved: { chunkIndex: number; similarity: number }[];
   abstained: boolean;
+  /** Candidates the lexical retriever contributed (hybrid only). */
+  lexicalCandidates: number;
   latencyMs: number;
   promptTokens: number;
   completionTokens: number;
@@ -143,7 +158,19 @@ async function runQuery(
   const embedding = await openai.embeddings.create({ model: EMBEDDING_MODEL, input: question });
   const embeddingTokens = embedding.usage?.total_tokens ?? 0;
 
-  const retrieved = await matchChunks(supabase, embedding.data[0].embedding, userId);
+  let lexicalCandidates = 0;
+  if (STRATEGY === "hybrid") {
+    // Counted separately so a lexical retriever that silently returns nothing
+    // is visible. Hybrid degrades to vector-only in that case and the headline
+    // metrics look merely unchanged rather than broken — which is how the
+    // AND-semantics bug in migration 0003 survived a full evaluation run.
+    lexicalCandidates = (await matchChunksFts(supabase, question, userId, CANDIDATE_COUNT)).length;
+  }
+
+  const retrieved =
+    STRATEGY === "hybrid"
+      ? await hybridSearch(supabase, embedding.data[0].embedding, question, userId)
+      : await matchChunks(supabase, embedding.data[0].embedding, userId);
 
   // Rank is 1-based: the position of the first retrieved chunk that actually
   // contains the gold text. null means it was not retrieved at all.
@@ -174,6 +201,7 @@ async function runQuery(
       similarity: Number(c.similarity.toFixed(4)),
     })),
     abstained: chunkContains(answer, ABSTENTION_PHRASE),
+    lexicalCandidates,
     latencyMs: Date.now() - started,
     promptTokens: completion.usage?.prompt_tokens ?? 0,
     completionTokens: completion.usage?.completion_tokens ?? 0,
@@ -291,18 +319,32 @@ function report(results: QueryResult[], corpusTokens: number): void {
   console.log(`\n${table}\n`);
   console.log(`rank distribution (1..5): ${rankCounts.join(", ")}`);
 
+  if (results.some((r) => r.lexicalCandidates > 0) || STRATEGY === "hybrid") {
+    const withLexical = results.filter((r) => r.lexicalCandidates > 0).length;
+    console.log(
+      `lexical retriever contributed candidates for ${withLexical}/${results.length} queries`
+    );
+    if (withLexical === 0) {
+      console.log(
+        "  WARNING: lexical search returned nothing for every query — hybrid is " +
+          "running as vector-only. Check migration 0004 has been applied."
+      );
+    }
+  }
+
   const misses = answerable.filter((r) => r.rank === null).map((r) => r.id);
   if (misses.length) console.log(`retrieval misses: ${misses.join(", ")}`);
 
   const leaks = unanswerable.filter((r) => !r.abstained).map((r) => r.id);
   if (leaks.length) console.log(`answered when it should not have: ${leaks.join(", ")}`);
 
-  const outPath = path.join(process.cwd(), "tests", "eval", "results.json");
+  const outPath = path.join(process.cwd(), "tests", "eval", `results-${STRATEGY}.json`);
   writeFileSync(
     outPath,
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
+        strategy: STRATEGY,
         model: { embedding: EMBEDDING_MODEL, chat: CHAT_MODEL },
         matchCount: MATCH_COUNT,
         metrics: { hitRate, mrr, abstentionRate, falseAbstention, p50, p95 },

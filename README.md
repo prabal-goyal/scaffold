@@ -37,16 +37,20 @@ npm run dev
 Offline eval over 25 answerable + 8 unanswerable questions on a fixed
 public-domain corpus (Federalist Papers 1–30, 208 chunks). `npm run eval`.
 
-| Metric | Baseline |
-| --- | --- |
-| hit-rate@5 | **80.0%** |
-| MRR@5 | **0.627** |
-| abstention on unanswerable | **75.0%** |
-| latency p95 | 2,450 ms |
-| cost per query | $0.00039 |
+| Metric | vector | hybrid |
+| --- | --- | --- |
+| hit-rate@5 | 80.0% | **92.0%** |
+| MRR@5 | 0.627 | **0.783** |
+| abstention on unanswerable | 75.0% | **87.5%** |
+| latency p95 | 2,384 ms | 2,693 ms |
+| cost per query | $0.00039 | $0.00039 |
 
-Retrieval is pure cosine top-5 today. Full method, the five misses, and two
-caveats about what hit-rate does *not* mean: [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
+Replacing pure cosine top-5 with vector + Postgres full-text fused by reciprocal
+rank fusion raised hit-rate@5 from 80.0% to 92.0%, for about +290 ms at p50.
+
+Read [tests/eval/RESULTS.md](tests/eval/RESULTS.md) before quoting those numbers
+— it documents a bias in the golden set that makes lexical search look better
+than it should, the RRF constant sweep, and why hit-rate is not answer quality.
 
 **How it works:**
 ```
