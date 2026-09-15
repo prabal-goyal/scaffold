@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
-import { openai, EMBEDDING_MODEL } from "@/lib/openai";
+import {
+  openai,
+  EMBEDDING_MODEL,
+  EMBEDDING_BATCH_SIZE,
+  EMBEDDING_BATCH_TIMEOUT_MS,
+} from "@/lib/openai";
 import { chunkText } from "@/lib/chunker";
 import { checkRateLimit } from "@/lib/rate-limit";
 import pdfParse from "pdf-parse";
@@ -14,6 +19,12 @@ export const maxDuration = 60;
 // whole document. The limit is tight because re-uploading is rare.
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 10 * 60_000;
+
+// A 4 MB PDF bounds the upload, not the work: PDF content streams are
+// compressed, so 4 MB of file can decompress to far more text than the 60s
+// budget can embed. This caps the work explicitly and fails with an
+// explanation, rather than running until the function is killed.
+const MAX_CHUNKS = 600;
 
 export async function POST(req: NextRequest) {
   const authClient = await createSupabaseServerClient();
@@ -32,7 +43,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch (error) {
+    console.error("could not read upload", error);
+    return NextResponse.json({ error: "Could not read the upload" }, { status: 400 });
+  }
+
   const file = formData.get("file") as File | null;
 
   if (!file) {
@@ -50,8 +68,23 @@ export async function POST(req: NextRequest) {
   // ── Step 1: Extract text from the PDF ──────────────────────────────────────
   // File is a Web API object. pdf-parse needs a Node.js Buffer.
   // arrayBuffer() gives us the raw binary, Buffer.from() converts it.
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const { text, numpages } = await pdfParse(buffer);
+  // pdfParse throws on encrypted, password-protected and malformed files, all
+  // of which pass the .endsWith(".pdf") check above. Uncaught, that surfaced as
+  // an unhandled 500 with no explanation.
+  let text: string;
+  let numpages: number;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const parsed = await pdfParse(buffer);
+    text = parsed.text;
+    numpages = parsed.numpages;
+  } catch (error) {
+    console.error("pdf parse failed", error);
+    return NextResponse.json(
+      { error: "Could not read this PDF. It may be encrypted, password-protected or damaged." },
+      { status: 422 }
+    );
+  }
 
   // Scanned PDFs are images — pdf-parse can't extract text from images.
   // We detect this and tell the user instead of silently indexing nothing.
@@ -63,20 +96,39 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Step 2: Chunk the text ─────────────────────────────────────────────────
-  // chunkText splits into ~500 token pieces with 50 token overlap.
+  // Sizes come from src/lib/chunker.ts, chosen by sweeping against the eval set.
   // Each chunk also carries the source file name for citation display later.
   const chunks = chunkText(text, file.name);
 
-  // ── Step 3: Embed all chunks in a single batched API call ──────────────────
-  // We send ALL chunk texts at once. OpenAI embeds them in parallel on their end
-  // and returns an array of vectors in the same order as our input array.
-  const embeddingResponse = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: chunks.map((c) => c.text),
-  });
+  if (chunks.length > MAX_CHUNKS) {
+    return NextResponse.json(
+      {
+        error: `This document is too long to index (${chunks.length} sections, limit ${MAX_CHUNKS}). Try splitting it into smaller files.`,
+      },
+      { status: 413 }
+    );
+  }
 
-  // embeddingResponse.data[i].embedding is the vector for chunks[i]
-  const vectors = embeddingResponse.data.map((e) => e.embedding);
+  // ── Step 3: Embed the chunks, in batches ───────────────────────────────────
+  // Sending every chunk in one call exceeded OpenAI's input-array limit on large
+  // documents and gave a single timeout the power to lose all the work.
+  const vectors: number[][] = [];
+  try {
+    for (let i = 0; i < chunks.length; i += EMBEDDING_BATCH_SIZE) {
+      const batch = chunks.slice(i, i + EMBEDDING_BATCH_SIZE);
+      const response = await openai.embeddings.create(
+        { model: EMBEDDING_MODEL, input: batch.map((c) => c.text) },
+        { timeout: EMBEDDING_BATCH_TIMEOUT_MS }
+      );
+      vectors.push(...response.data.map((e) => e.embedding));
+    }
+  } catch (error) {
+    console.error("embedding failed", error);
+    return NextResponse.json(
+      { error: "Could not process this document. Please try again." },
+      { status: 502 }
+    );
+  }
 
   // ── Step 4: Store in Supabase ──────────────────────────────────────────────
   const supabase = createServiceClient();

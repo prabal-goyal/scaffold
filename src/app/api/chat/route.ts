@@ -1,4 +1,10 @@
-import { openai, EMBEDDING_MODEL, CHAT_MODEL } from "@/lib/openai";
+import {
+  openai,
+  EMBEDDING_MODEL,
+  CHAT_MODEL,
+  EMBEDDING_TIMEOUT_MS,
+  CHAT_TIMEOUT_MS,
+} from "@/lib/openai";
 import { openai as aiOpenai } from "@ai-sdk/openai";
 import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
@@ -53,11 +59,19 @@ export async function POST(req: Request) {
   }
 
   // ── Step 1: Embed the question ──────────────────────────────────────────────
-  const embeddingResponse = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: question,
-  });
-  const questionVector = embeddingResponse.data[0].embedding;
+  // Bounded well under this route's 30s budget so a retry can still happen
+  // inside it; the SDK's 10-minute default would outlive the function itself.
+  let questionVector: number[];
+  try {
+    const embeddingResponse = await openai.embeddings.create(
+      { model: EMBEDDING_MODEL, input: question },
+      { timeout: EMBEDDING_TIMEOUT_MS }
+    );
+    questionVector = embeddingResponse.data[0].embedding;
+  } catch (embeddingError) {
+    console.error("question embedding failed", embeddingError);
+    return json({ error: "Could not process your question. Please try again." }, 503);
+  }
 
   // ── Step 2: Find the most relevant chunks ──────────────────────────────────
   // hybridSearch and buildSystemPrompt are shared with the evaluation harness,
@@ -97,6 +111,9 @@ export async function POST(req: Request) {
         temperature: 0.2,
         system: systemPrompt,
         messages,
+        // Bounds time-to-first-token. The response streams, so this is not a
+        // cap on total generation time.
+        abortSignal: AbortSignal.timeout(CHAT_TIMEOUT_MS),
       });
 
       result.mergeIntoDataStream(dataStream);

@@ -183,12 +183,18 @@ CV/portfolio claim it unlocks.
    owns after a successful upload. Supporting multiple documents with a filter is
    both more useful and a better demo (cross-document citation).
 
-9. **Unbounded embeddings batch.** Ingest sends *every* chunk in one
-   `openai.embeddings.create` call. A large PDF will exceed the input-array limit.
-   Batch it.
+9. ~~**Unbounded embeddings batch.**~~ Fixed — ingest embeds in batches of
+   `EMBEDDING_BATCH_SIZE` (100) and refuses documents over `MAX_CHUNKS` (600)
+   with an explanation rather than running until the function is killed. The
+   4 MB upload cap bounds the file, not the work: PDF streams are compressed.
 
-10. **No retries or timeouts on any OpenAI call** — embeddings or chat. A 429 or a
-    hung request fails the whole request with no recovery.
+10. ~~**No retries or timeouts on any OpenAI call.**~~ Fixed — **and this item
+    was wrong.** The SDK already defaulted to `maxRetries: 2` and a **10-minute**
+    timeout. The retries were not missing, they were unreachable: the routes are
+    killed at 30s (chat) and 60s (ingest), so a hung call burned the whole budget
+    while the SDK waited and no retry ever fired. Per-call timeouts now sit well
+    under each route's `maxDuration` (`src/lib/openai.ts`), which is what makes
+    the retries usable.
 
 11. **No tests beyond the harness.** `chunkText` is a pure function and ideal for
     unit tests: overlap correctness, sentence-boundary splitting, empty input, text
@@ -218,9 +224,11 @@ now"). Listed so they are not rediscovered from scratch.
     becomes a real cross-user attack the moment sharing, cross-document
     retrieval or tool-calling is added.
 
-15. **No `try/catch` around `pdfParse`.** It throws on malformed, encrypted or
-    password-protected PDFs, all of which pass the `.endsWith(".pdf")` check.
-    That check is also filename-only — no magic-byte validation.
+15. ~~**No `try/catch` around `pdfParse`.**~~ Fixed — `pdfParse` and
+    `req.formData()` are both wrapped, returning 422 and 400 with usable
+    messages. Verified: random bytes and a truncated header both return 422
+    instead of an uncaught 500. The filename-only type check remains (no
+    magic-byte validation), but `pdfParse` failing loudly now covers it.
 
 16. **Dashboard fetches on the client what the server already has.**
     `src/app/dashboard/page.tsx` calls `/api/eval` from a `useEffect`, costing a
