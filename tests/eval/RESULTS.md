@@ -7,7 +7,7 @@ Generated 2026-09-15. Raw per-question data in `results-<strategy>-<style>.json`
 | | |
 | --- | --- |
 | Corpus | Federalist Papers 1–30 (Project Gutenberg, public domain) — 61,206 words → **208 chunks** |
-| Chunking | `src/lib/chunker.ts`, ~500 tokens target / 50 overlap, estimated at 4 chars per token |
+| Chunking | `src/lib/chunker.ts`, 384 tokens / 48 overlap, counted with `cl100k_base` |
 | Retrieval | vector (cosine top-5) and hybrid (vector + full-text, fused by RRF) |
 | Embedding | `text-embedding-3-small` |
 | Generation | `gpt-4o-mini`, temperature 0.2 |
@@ -77,6 +77,59 @@ fusion is never worse than vector-only on any style or either metric, and adds
 16 points of hit-rate when the user does quote the document. That dominance is
 the reason for these values — a better *mean* can hide a regression in one
 style, which is exactly what happened at equal weight.
+
+## Chunk size, swept
+
+`npm run eval:chunks`. Each configuration re-chunks, re-embeds and re-indexes
+the corpus, then scores all three styles with the shipped hybrid retrieval — so
+the only variable is the chunking. This is the experiment the snippet-based gold
+labels were designed to make possible.
+
+### hit-rate@5
+
+| chunk/overlap | chunks | verbatim | paraphrase | keyword | mean |
+| --- | --- | --- | --- | --- | --- |
+| 256/32 | 366 | 96.0% | 68.0% | 44.0% | 69.3% |
+| 320/40 | 291 | 96.0% | 68.0% | 56.0% | **73.3%** |
+| **384/48** | 242 | 88.0% | **76.0%** | 56.0% | **73.3%** |
+| 448/56 | 207 | 88.0% | 72.0% | 56.0% | 72.0% |
+| 512/64 | 181 | 88.0% | 64.0% | 56.0% | 69.3% |
+| 1024/128 | 90 | 84.0% | 60.0% | 56.0% | 66.7% |
+
+### MRR@5
+
+| chunk/overlap | verbatim | paraphrase | keyword | mean |
+| --- | --- | --- | --- | --- |
+| 256/32 | 0.796 | 0.347 | 0.236 | 0.460 |
+| 320/40 | 0.787 | 0.358 | 0.335 | 0.493 |
+| **384/48** | 0.738 | **0.433** | 0.370 | **0.514** |
+| 448/56 | 0.690 | 0.335 | 0.281 | 0.435 |
+| 512/64 | 0.710 | 0.373 | 0.385 | 0.489 |
+| 1024/128 | 0.641 | 0.365 | 0.375 | 0.460 |
+
+### What this says
+
+**Smaller chunks win on this corpus, up to a point.** Everything from 256 to 448
+beat 512 and 1024, consistently across styles. That direction is the solid
+finding; the differences *within* 256-448 are a question or two, which is noise
+at 25 questions per style.
+
+**384/48 ships** because it leads on the paraphrase style — how users actually
+ask — and on mean MRR@5, while tying for the best mean hit-rate. It is the
+middle of a good region, not a measured optimum.
+
+**Fixing the tokenizer made retrieval slightly worse, at first.** The old
+`text.length / 4` estimate overshot by about 14% on this prose, so chunks
+labelled "500 tokens" were really ~437. Switching to real `cl100k_base` counts
+at 512 produced genuinely larger chunks — 181 instead of 208 — and mean
+hit-rate fell from 73.3% to 69.3%. The accidental setting had been closer to
+optimal than the deliberate one. Sweeping is what recovered it.
+
+**Chunk size barely affects indexing cost; overlap ratio does.** At a constant
+12.5% overlap every configuration embedded ~91,000 tokens regardless of chunk
+size. Raising overlap to 25% (512/128) cost 106,000 — 17% more. Any claim that
+smaller chunks are cheaper to index is wrong: the text is embedded either way,
+and only duplicated overlap adds tokens.
 
 ## End-to-end, including generation
 

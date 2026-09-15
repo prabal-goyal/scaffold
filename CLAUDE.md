@@ -148,14 +148,25 @@ CV/portfolio claim it unlocks.
    - Still undone: a reranker. The remaining paraphrase misses are cases where
      *neither* retriever finds the passage, so fusion tuning cannot help.
 
-5. **Use a real tokenizer.** `src/lib/chunker.ts` estimates tokens as
-   `Math.ceil(text.length / 4)`, so the chunk sizes are character approximations,
-   not token counts. Swap in `js-tiktoken` with `cl100k_base`. Then sweep chunk
-   size and overlap against the harness.
-   *Unlocks:* "Swept chunk size and overlap against a 30-pair eval set; 512/64 beat
-   1024/128 by X points of hit-rate@5 at 40% lower embedding cost."
-   *Note:* until this lands, any CV claim of "512-token chunks with 64-token
-   overlap" is inaccurate — the code is 500/50, estimated.
+5. ~~**Use a real tokenizer.**~~ **Done.** `js-tiktoken` with `cl100k_base` —
+   the encoding `text-embedding-3-small` and `gpt-4o-mini` actually bill on.
+   `chunkText` now takes `{ chunkSize, overlap }`, and defaults were chosen by
+   sweeping (`npm run eval:chunks`), landing on **384/48**.
+
+   What the sweep actually showed:
+   - **Smaller chunks win here, up to a point.** 256-448 all beat 512 and 1024.
+     That direction is the solid result; differences inside 256-448 are a
+     question or two, which is noise at n=25 per style.
+   - **The tokenizer fix made retrieval worse before it made it better.** The
+     old `length / 4` estimate overshot ~14%, so "500-token" chunks were really
+     ~437. Honest 512-token chunks scored 69.3% mean against the accidental
+     setting's 73.3%. The sweep is what recovered it.
+   - **Chunk size barely affects indexing cost; overlap ratio does.** At 12.5%
+     overlap every configuration embedded ~91k tokens whatever the chunk size;
+     25% overlap cost 17% more. The backlog's hoped-for "40% lower embedding
+     cost" claim is not supported — the text gets embedded either way.
+   - Re-chunking invalidates nothing in the golden set, because gold answers
+     match by snippet containment. That was the design bet and it paid off.
 
 6. **Log cost, latency and token counts per query** into the `evals` table
    (currently only `rating` is stored). The dashboard then shows p95 latency and

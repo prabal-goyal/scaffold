@@ -14,8 +14,13 @@ export const CORPUS_NAME = "federalist-1-30.pdf";
  * rather than being hidden behind a separate test-only implementation.
  */
 export async function loadCorpusChunks(): Promise<Chunk[]> {
+  return chunkText(await loadCorpusText(), CORPUS_NAME);
+}
+
+/** The corpus as extracted text, for callers that want to chunk it themselves. */
+export async function loadCorpusText(): Promise<string> {
   const { text } = await pdfParse(readFileSync(CORPUS_PATH));
-  return chunkText(text, CORPUS_NAME);
+  return text;
 }
 
 /**

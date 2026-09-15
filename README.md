@@ -53,7 +53,11 @@ and 20% on paraphrased ones, so at equal weight it made results *worse* than
 vector alone. The shipped weighting is never worse than vector-only on any
 style, and adds 16 points when users do quote the document.
 
-Full method, the tuning caveat, and why hit-rate is not answer quality:
+Chunk size was swept the same way (`npm run eval:chunks`): 384/48 tokens, using
+real `cl100k_base` counts rather than a character estimate. Everything from 256
+to 448 tokens beat 512 and 1024 on this corpus.
+
+Full method, the tuning caveats, and why hit-rate is not answer quality:
 [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
 
 **How it works:**
