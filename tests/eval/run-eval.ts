@@ -36,6 +36,7 @@ import {
 import { buildSystemPrompt, ABSTENTION_PHRASE } from "@/lib/prompt";
 import { loadCorpusChunks, chunkContains, CORPUS_NAME } from "./corpus";
 import { ANSWERABLE, UNANSWERABLE, STYLES, questionFor, type QuestionStyle } from "./golden";
+import { judgeGroundedness, JUDGE_MODEL, type Verdict } from "./judge";
 
 // ── Pricing ─────────────────────────────────────────────────────────────────
 // USD per million tokens, entered by hand on 2026-09-15. OpenAI changes these;
@@ -59,6 +60,10 @@ const STRATEGY: Strategy = process.argv.includes("--hybrid") ? "hybrid" : "vecto
 // Which phrasing of each question to use end-to-end. The full style matrix
 // lives in eval:sweep, which needs no LLM call; this picks one for the
 // generation-dependent metrics.
+// Groundedness costs a judge call per question on a stronger model, so it is
+// opt-in rather than part of every run.
+const JUDGE = process.argv.includes("--judge");
+
 const STYLE: QuestionStyle =
   (STYLES.find((s) => process.argv.includes(`--style=${s}`)) as QuestionStyle) ?? "verbatim";
 
@@ -73,6 +78,9 @@ interface QueryResult {
   abstained: boolean;
   /** Candidates the lexical retriever contributed (hybrid only). */
   lexicalCandidates: number;
+  /** Groundedness verdict, when --judge is passed. */
+  verdict: Verdict | null;
+  verdictReason: string;
   latencyMs: number;
   promptTokens: number;
   completionTokens: number;
@@ -196,6 +204,15 @@ async function runQuery(
   });
 
   const answer = completion.choices[0]?.message?.content ?? "";
+  const latencyMs = Date.now() - started;
+
+  let verdict: Verdict | null = null;
+  let verdictReason = "";
+  if (JUDGE) {
+    const judgement = await judgeGroundedness(question, answer, retrieved);
+    verdict = judgement?.verdict ?? null;
+    verdictReason = judgement?.reason ?? "";
+  }
 
   return {
     id,
@@ -208,7 +225,11 @@ async function runQuery(
     })),
     abstained: chunkContains(answer, ABSTENTION_PHRASE),
     lexicalCandidates,
-    latencyMs: Date.now() - started,
+    verdict,
+    verdictReason,
+    // Judging happens after the clock stops: it is measurement, not part of the
+    // pipeline a user waits for.
+    latencyMs,
     promptTokens: completion.usage?.prompt_tokens ?? 0,
     completionTokens: completion.usage?.completion_tokens ?? 0,
     embeddingTokens,
@@ -324,6 +345,37 @@ function report(results: QueryResult[], corpusTokens: number): void {
 
   console.log(`\n${table}\n`);
   console.log(`rank distribution (1..5): ${rankCounts.join(", ")}`);
+
+  if (JUDGE) {
+    // Abstentions assert nothing, so counting them as grounded would inflate
+    // the score — a system that always declined would score 100%.
+    const judged = results.filter((r) => r.verdict !== null && !r.abstained);
+    const unjudged = results.filter((r) => r.verdict === null).length;
+    const counts = {
+      grounded: judged.filter((r) => r.verdict === "grounded").length,
+      partially_grounded: judged.filter((r) => r.verdict === "partially_grounded").length,
+      unsupported: judged.filter((r) => r.verdict === "unsupported").length,
+    };
+
+    console.log(
+      `
+groundedness (judge: ${JUDGE_MODEL}, ${judged.length} substantive answers; ` +
+        `${results.filter((r) => r.abstained).length} abstentions excluded)`
+    );
+    console.log(`  grounded:           ${counts.grounded}`);
+    console.log(`  partially grounded: ${counts.partially_grounded}`);
+    console.log(`  unsupported:        ${counts.unsupported}`);
+    if (judged.length) {
+      console.log(
+        `  fully grounded rate: ${((counts.grounded / judged.length) * 100).toFixed(1)}%`
+      );
+    }
+    if (unjudged) console.log(`  unparseable judgements: ${unjudged}`);
+
+    for (const r of judged.filter((x) => x.verdict === "unsupported")) {
+      console.log(`  ! ${r.id}: ${r.verdictReason}`);
+    }
+  }
 
   if (results.some((r) => r.lexicalCandidates > 0) || STRATEGY === "hybrid") {
     const withLexical = results.filter((r) => r.lexicalCandidates > 0).length;

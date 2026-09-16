@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15T04:57:29.687Z",
+  "generatedAt": "2026-09-16T03:10:33.520Z",
   "strategy": "hybrid",
   "style": "paraphrase",
   "model": {
@@ -8,16 +8,16 @@
   },
   "matchCount": 5,
   "metrics": {
-    "hitRate": 0.68,
-    "mrr": 0.4613333333333333,
-    "abstentionRate": 0.875,
-    "falseAbstention": 0.24,
-    "p50": 1938,
-    "p95": 2843
+    "hitRate": 0.76,
+    "mrr": 0.43266666666666664,
+    "abstentionRate": 0.75,
+    "falseAbstention": 0.16,
+    "p50": 2039,
+    "p95": 3917
   },
   "cost": {
-    "perQuery": 0.00038393787878787883,
-    "corpusIndex": 0.00177186
+    "perQuery": 0.0003502606060606061,
+    "corpusIndex": 0.00182004
   },
   "results": [
     {
@@ -27,68 +27,72 @@
       "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 57,
-          "similarity": 0.4796
+          "chunkIndex": 67,
+          "similarity": 0.5098
         },
         {
-          "chunkIndex": 60,
-          "similarity": 0.4826
-        },
-        {
-          "chunkIndex": 59,
+          "chunkIndex": 68,
           "similarity": 0.4584
         },
         {
-          "chunkIndex": 2,
-          "similarity": 0.4451
+          "chunkIndex": 71,
+          "similarity": 0.4773
         },
         {
-          "chunkIndex": 61,
-          "similarity": 0.4438
+          "chunkIndex": 70,
+          "similarity": 0.4388
+        },
+        {
+          "chunkIndex": 69,
+          "similarity": 0.4381
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1896,
-      "promptTokens": 2337,
-      "completionTokens": 46,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the methods of dealing with factions as described in the sources.",
+      "latencyMs": 2344,
+      "promptTokens": 2111,
+      "completionTokens": 48,
       "embeddingTokens": 17,
-      "answer": "The damage done by rival political groups, or factions, can be dealt with in two broad ways: \n\n1. By removing the causes of faction.\n2. By controlling its effects.\n\nSources used: [1], [5]"
+      "answer": "The damage done by rival political groups, or factions, can be dealt with in two broad ways: \n\n1. By removing the causes of faction.\n2. By controlling the effects of faction.\n\nSources used: [1], [3]"
     },
     {
       "id": "a02",
       "question": "What sort of state is one where few enough people govern themselves face to face?",
       "answerable": true,
-      "rank": null,
+      "rank": 3,
       "retrieved": [
         {
-          "chunkIndex": 190,
-          "similarity": 0.4255
+          "chunkIndex": 131,
+          "similarity": 0.4504
         },
         {
-          "chunkIndex": 51,
-          "similarity": 0.4241
+          "chunkIndex": 61,
+          "similarity": 0.4219
         },
         {
-          "chunkIndex": 63,
-          "similarity": 0.4187
+          "chunkIndex": 72,
+          "similarity": 0.428
         },
         {
-          "chunkIndex": 62,
-          "similarity": 0.4175
+          "chunkIndex": 173,
+          "similarity": 0.4211
         },
         {
-          "chunkIndex": 148,
-          "similarity": 0.4155
+          "chunkIndex": 101,
+          "similarity": 0.4201
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1974,
-      "promptTokens": 2330,
-      "completionTokens": 76,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly identifies a democracy as a state where people govern themselves face to face, as supported by Source 5.",
+      "latencyMs": 1922,
+      "promptTokens": 2115,
+      "completionTokens": 58,
       "embeddingTokens": 16,
-      "answer": "A state where few enough people govern themselves face to face is referred to as a \"pure democracy.\" In such a system, the citizens assemble and administer the government in person. However, this type of government is noted to have issues, as it can lead to turbulence and contention, and is often incompatible with personal security or the rights of property. \n\nSources used: [4]"
+      "answer": "A state where few enough people govern themselves face to face is referred to as a democracy. In this form of government, the people meet and exercise the government in person. This is contrasted with a republic, where the government is administered by representatives and agents. \n\nSources used: [5]"
     },
     {
       "id": "a03",
@@ -97,30 +101,32 @@
       "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 51,
-          "similarity": 0.5648
+          "chunkIndex": 60,
+          "similarity": 0.5588
         },
         {
-          "chunkIndex": 52,
-          "similarity": 0.537
+          "chunkIndex": 61,
+          "similarity": 0.5555
         },
         {
-          "chunkIndex": 26,
-          "similarity": 0.4966
+          "chunkIndex": 99,
+          "similarity": 0.4816
         },
         {
-          "chunkIndex": 86,
-          "similarity": 0.4956
+          "chunkIndex": 30,
+          "similarity": 0.4786
         },
         {
-          "chunkIndex": 54,
-          "similarity": 0.4601
+          "chunkIndex": 171,
+          "similarity": 0.4439
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2212,
-      "promptTokens": 2329,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly identifies Montesquieu as the political thinker quoted by critics, as supported by the sources.",
+      "latencyMs": 1837,
+      "promptTokens": 2103,
       "completionTokens": 25,
       "embeddingTokens": 17,
       "answer": "Critics quoted Montesquieu to argue that free states must stay geographically small. Sources used: [1], [2]"
@@ -129,176 +135,186 @@
       "id": "a04",
       "question": "What structure did that same thinker actually endorse for widening the reach of self-rule?",
       "answerable": true,
-      "rank": 2,
+      "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 51,
-          "similarity": 0.4523
+          "chunkIndex": 60,
+          "similarity": 0.4709
         },
         {
-          "chunkIndex": 52,
-          "similarity": 0.4246
+          "chunkIndex": 61,
+          "similarity": 0.4623
         },
         {
-          "chunkIndex": 5,
-          "similarity": 0.4187
+          "chunkIndex": 6,
+          "similarity": 0.4221
         },
         {
-          "chunkIndex": 86,
-          "similarity": 0.4119
+          "chunkIndex": 72,
+          "similarity": 0.4171
         },
         {
-          "chunkIndex": 56,
+          "chunkIndex": 101,
           "similarity": 0.4035
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1801,
-      "promptTokens": 2350,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly declines to provide an answer based on the sources.",
+      "latencyMs": 2375,
+      "promptTokens": 2090,
       "completionTokens": 22,
       "embeddingTokens": 16,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: [1], [2], [4]"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: [1], [2], [3]"
     },
     {
       "id": "a05",
       "question": "Among the old confederacies, which pair does the author judge least hampered by the flawed doctrine he criticises?",
       "answerable": true,
-      "rank": null,
+      "rank": 3,
       "retrieved": [
         {
-          "chunkIndex": 115,
-          "similarity": 0.5761
+          "chunkIndex": 134,
+          "similarity": 0.557
         },
         {
-          "chunkIndex": 146,
-          "similarity": 0.5511
+          "chunkIndex": 63,
+          "similarity": 0.5585
         },
         {
-          "chunkIndex": 84,
-          "similarity": 0.547
+          "chunkIndex": 121,
+          "similarity": 0.5744
         },
         {
-          "chunkIndex": 55,
-          "similarity": 0.5169
+          "chunkIndex": 98,
+          "similarity": 0.5501
         },
         {
-          "chunkIndex": 54,
-          "similarity": 0.5324
+          "chunkIndex": 178,
+          "similarity": 0.5286
         }
       ],
-      "abstained": true,
+      "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2579,
-      "promptTokens": 2367,
-      "completionTokens": 82,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information in Source 3.",
+      "latencyMs": 2175,
+      "promptTokens": 2113,
+      "completionTokens": 68,
       "embeddingTokens": 24,
-      "answer": "The author judges the confederacy of the Grecian republics, associated under the Amphictyonic council, as one of the more considerable examples among the old confederacies. However, the specific pair that is judged least hampered by the flawed doctrine is not explicitly mentioned in the provided excerpts. \n\nI couldn't find this in the provided documents. \n\nSources used: [1], [3]"
+      "answer": "The author judges the Lycian and Achaean leagues as the confederacies least hampered by the flawed doctrine he criticizes. He notes that they appear to have been most free from the fetters of that mistaken principle and have best deserved and received the applauding suffrages of political writers. \n\nSources used: [3]"
     },
     {
       "id": "a06",
       "question": "How does this later Greek alliance compare in closeness and design with the one discussed before it?",
       "answerable": true,
-      "rank": 4,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 121,
-          "similarity": 0.5501
+          "chunkIndex": 29,
+          "similarity": 0.4572
         },
         {
-          "chunkIndex": 25,
-          "similarity": 0.4643
+          "chunkIndex": 138,
+          "similarity": 0.562
         },
         {
-          "chunkIndex": 122,
-          "similarity": 0.5267
+          "chunkIndex": 142,
+          "similarity": 0.5193
         },
         {
-          "chunkIndex": 119,
-          "similarity": 0.5459
+          "chunkIndex": 139,
+          "similarity": 0.5531
         },
         {
-          "chunkIndex": 118,
-          "similarity": 0.5303
+          "chunkIndex": 141,
+          "similarity": 0.5476
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2790,
-      "promptTokens": 2388,
-      "completionTokens": 168,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the comparison between the Achaean league and the Amphictyonic confederacy as described in the sources.",
+      "latencyMs": 2924,
+      "promptTokens": 2115,
+      "completionTokens": 178,
       "embeddingTokens": 19,
-      "answer": "The later Greek alliance, known as the Achaean league, is described as having a more intimate union and a wiser organization compared to the earlier Amphictyonic confederacy. The Achaean league allowed its member cities to retain their municipal jurisdiction, appoint their own officers, and enjoy perfect equality. The league's senate had exclusive rights over matters of peace and war, diplomacy, and governance, which indicates a more structured and cohesive political framework.\n\nIn contrast, the Amphictyonic confederacy was less effective, as it ultimately fell victim to external powers like Macedon due to its weaker structure and lack of unity among the member states. The Achaean league, while also facing challenges and eventual downfall, was better organized and had a stronger foundation for cooperation among its members.\n\nSources used: [1], [4]"
+      "answer": "The later Greek alliance, known as the Achaean league, is described as having a far more intimate union and a wiser organization compared to the earlier Amphictyonic confederacy. The Achaean league allowed its member cities to retain their municipal jurisdiction, appoint their own officers, and enjoy perfect equality. It had a senate that held exclusive rights over matters of peace and war, sending and receiving ambassadors, and entering into treaties and alliances. This structure provided a more cohesive and organized approach to governance and military action.\n\nIn contrast, the Amphictyonic confederacy did not impose such a strict organization or unity among its member cities, which ultimately contributed to its vulnerability and downfall. The Achaean league, while not exempt from challenges, was better designed to maintain unity and resist external threats compared to the earlier confederacy.\n\nSources used: [2], [4]"
     },
     {
       "id": "a07",
       "question": "How are one rebel leader's personal money troubles linked to the outbreak of fighting in Massachusetts?",
       "answerable": true,
-      "rank": null,
+      "rank": 5,
       "retrieved": [
         {
-          "chunkIndex": 199,
-          "similarity": 0.3541
+          "chunkIndex": 202,
+          "similarity": 0.3683
         },
         {
-          "chunkIndex": 173,
-          "similarity": 0.3399
+          "chunkIndex": 232,
+          "similarity": 0.3523
         },
         {
-          "chunkIndex": 188,
-          "similarity": 0.4038
+          "chunkIndex": 220,
+          "similarity": 0.3812
         },
         {
-          "chunkIndex": 37,
-          "similarity": 0.3746
+          "chunkIndex": 32,
+          "similarity": 0.3676
         },
         {
-          "chunkIndex": 146,
-          "similarity": 0.3196
+          "chunkIndex": 34,
+          "similarity": 0.3639
         }
       ],
-      "abstained": true,
+      "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1787,
-      "promptTokens": 2368,
-      "completionTokens": 14,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information in Source 5 about Shays' financial troubles being linked to the outbreak of fighting in Massachusetts.",
+      "latencyMs": 2608,
+      "promptTokens": 2114,
+      "completionTokens": 93,
       "embeddingTokens": 18,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "The outbreak of fighting in Massachusetts is linked to the personal money troubles of a rebel leader, specifically Shays, who was described as a \"DESPERATE DEBTOR.\" It is suggested that if Shays had not been in such financial distress, it is doubtful that Massachusetts would have been plunged into a civil war. This indicates that personal financial issues can have significant political and social repercussions, leading to larger conflicts. \n\nSources used: [1], [5]"
     },
     {
       "id": "a08",
       "question": "What do critics assert about free states being peaceable and trade making people gentler?",
       "answerable": true,
-      "rank": 1,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 29,
-          "similarity": 0.4777
+          "chunkIndex": 85,
+          "similarity": 0.4819
         },
         {
-          "chunkIndex": 79,
-          "similarity": 0.4287
+          "chunkIndex": 34,
+          "similarity": 0.4836
         },
         {
-          "chunkIndex": 38,
-          "similarity": 0.4759
+          "chunkIndex": 91,
+          "similarity": 0.4451
         },
         {
-          "chunkIndex": 73,
-          "similarity": 0.4577
+          "chunkIndex": 24,
+          "similarity": 0.4268
         },
         {
-          "chunkIndex": 67,
-          "similarity": 0.4228
+          "chunkIndex": 18,
+          "similarity": 0.4553
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2747,
-      "promptTokens": 2341,
-      "completionTokens": 120,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the arguments presented in Source 2.",
+      "latencyMs": 3056,
+      "promptTokens": 2098,
+      "completionTokens": 104,
       "embeddingTokens": 17,
-      "answer": "Critics assert that the idea of free states being peaceable and that trade makes people gentler is a paradox. They argue that despite the belief that the spirit of commerce can soften manners and extinguish the tendencies toward war, historical evidence suggests that momentary passions and immediate interests often have a more significant influence on human behavior than broader considerations of policy or justice. Critics question whether republics have been less prone to war than monarchies, pointing out that both are governed by human beings who have aversions, rivalries, and desires that can lead to conflict. \n\nSources used: [1]"
+      "answer": "Critics assert that the idea of perpetual peace between disunited states is a paradox. They argue that while some may believe that the spirit of commerce tends to soften manners and reduce the likelihood of conflict, historical evidence suggests that immediate passions and interests often have a stronger influence on human behavior than broader considerations of policy or justice. Furthermore, critics question whether republics are indeed less prone to war than monarchies, suggesting that the notion of commercial republics being inherently peaceful is overly optimistic. \n\nSources used: [2]"
     },
     {
       "id": "a09",
@@ -307,68 +323,72 @@
       "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 77,
-          "similarity": 0.4644
+          "chunkIndex": 90,
+          "similarity": 0.492
         },
         {
-          "chunkIndex": 206,
-          "similarity": 0.4112
+          "chunkIndex": 240,
+          "similarity": 0.4137
         },
         {
-          "chunkIndex": 81,
-          "similarity": 0.4831
+          "chunkIndex": 89,
+          "similarity": 0.4534
         },
         {
-          "chunkIndex": 201,
-          "similarity": 0.4383
+          "chunkIndex": 94,
+          "similarity": 0.4477
         },
         {
-          "chunkIndex": 142,
-          "similarity": 0.3918
+          "chunkIndex": 237,
+          "similarity": 0.4281
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2215,
-      "promptTokens": 2380,
-      "completionTokens": 87,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information in the sources about reliance on duties for revenue.",
+      "latencyMs": 2903,
+      "promptTokens": 2103,
+      "completionTokens": 79,
       "embeddingTokens": 15,
-      "answer": "The country will have to rely chiefly on duties, particularly those derived from commerce, for government income in the years ahead. It is indicated that excises must be confined within a narrow compass due to the people's resistance to such taxes, and direct taxation on land and personal property is impractical. Therefore, the principal part of revenue must come from taxes on consumption and duties on imported articles. \n\nSources used: [1], [3]"
+      "answer": "The country will have to rely chiefly on duties, particularly those on imported articles, for government income for years ahead. It is indicated that excises must be confined within a narrow compass due to the people's resistance to such taxes, and direct taxation on personal property is impractical. Therefore, the means of revenue will primarily depend on duties from commerce. \n\nSources used: [1], [3]"
     },
     {
       "id": "a10",
       "question": "What are the Dutch member states forbidden to do unless everyone agrees?",
       "answerable": true,
-      "rank": 4,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 133,
-          "similarity": 0.5524
+          "chunkIndex": 155,
+          "similarity": 0.5204
         },
         {
-          "chunkIndex": 40,
-          "similarity": 0.3836
+          "chunkIndex": 153,
+          "similarity": 0.5049
         },
         {
-          "chunkIndex": 132,
-          "similarity": 0.5145
+          "chunkIndex": 154,
+          "similarity": 0.4871
         },
         {
-          "chunkIndex": 131,
-          "similarity": 0.4844
+          "chunkIndex": 156,
+          "similarity": 0.4723
         },
         {
-          "chunkIndex": 134,
-          "similarity": 0.4694
+          "chunkIndex": 152,
+          "similarity": 0.4545
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1845,
-      "promptTokens": 2304,
-      "completionTokens": 45,
+      "verdict": "grounded",
+      "verdictReason": "The answer is directly supported by Source 2.",
+      "latencyMs": 2253,
+      "promptTokens": 2102,
+      "completionTokens": 44,
       "embeddingTokens": 13,
-      "answer": "The provinces are restrained, unless with the general consent, from entering into foreign treaties; from establishing imposts injurious to others, or charging their neighbors with higher duties than their own subjects. \n\nSources used: [4]"
+      "answer": "The Dutch member states are forbidden to enter into foreign treaties, establish imposts injurious to others, or charge their neighbors with higher duties than their own subjects unless there is general consent. \n\nSources used: [2]"
     },
     {
       "id": "a11",
@@ -377,68 +397,72 @@
       "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 132,
-          "similarity": 0.4827
+          "chunkIndex": 154,
+          "similarity": 0.4933
         },
         {
-          "chunkIndex": 131,
-          "similarity": 0.4087
+          "chunkIndex": 153,
+          "similarity": 0.4638
         },
         {
-          "chunkIndex": 19,
-          "similarity": 0.2591
+          "chunkIndex": 22,
+          "similarity": 0.2758
         },
         {
-          "chunkIndex": 133,
-          "similarity": 0.3824
+          "chunkIndex": 155,
+          "similarity": 0.3753
         },
         {
-          "chunkIndex": 193,
-          "similarity": 0.2547
+          "chunkIndex": 156,
+          "similarity": 0.3296
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1725,
-      "promptTokens": 2306,
-      "completionTokens": 23,
+      "verdict": "grounded",
+      "verdictReason": "The claim about the standing army size is directly supported by Source 1.",
+      "latencyMs": 1750,
+      "promptTokens": 2108,
+      "completionTokens": 31,
       "embeddingTokens": 13,
-      "answer": "The standing army which the Dutch chief officer commands consists of about forty thousand men. \n\nSources used: [1]"
+      "answer": "The standing army commanded by the Dutch chief officer, known as the stadtholder, consists of about forty thousand men. \n\nSources used: [1]"
     },
     {
       "id": "a12",
       "question": "How many separate peoples held the German lands before any single ruler arose?",
       "answerable": true,
-      "rank": 3,
+      "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 114,
-          "similarity": 0.4248
+          "chunkIndex": 144,
+          "similarity": 0.4615
         },
         {
-          "chunkIndex": 126,
-          "similarity": 0.5111
+          "chunkIndex": 147,
+          "similarity": 0.5305
         },
         {
-          "chunkIndex": 123,
-          "similarity": 0.3814
+          "chunkIndex": 148,
+          "similarity": 0.4198
         },
         {
-          "chunkIndex": 124,
-          "similarity": 0.4828
+          "chunkIndex": 132,
+          "similarity": 0.3625
         },
         {
-          "chunkIndex": 127,
-          "similarity": 0.3453
+          "chunkIndex": 163,
+          "similarity": 0.3298
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1650,
-      "promptTokens": 2393,
-      "completionTokens": 21,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that seven distinct nations occupied the German lands before any single ruler arose, as supported by Source 1.",
+      "latencyMs": 2189,
+      "promptTokens": 2103,
+      "completionTokens": 19,
       "embeddingTokens": 14,
-      "answer": "In the early ages of Christianity, Germany was occupied by seven distinct nations. Sources used: [3]"
+      "answer": "Seven distinct nations occupied the German lands before any single ruler arose. Sources used: [1]"
     },
     {
       "id": "a13",
@@ -447,103 +471,109 @@
       "rank": 1,
       "retrieved": [
         {
-          "chunkIndex": 124,
-          "similarity": 0.6281
+          "chunkIndex": 145,
+          "similarity": 0.6092
         },
         {
-          "chunkIndex": 126,
-          "similarity": 0.5727
+          "chunkIndex": 147,
+          "similarity": 0.5622
         },
         {
-          "chunkIndex": 125,
-          "similarity": 0.5555
+          "chunkIndex": 144,
+          "similarity": 0.4857
         },
         {
-          "chunkIndex": 123,
-          "similarity": 0.3699
+          "chunkIndex": 148,
+          "similarity": 0.5071
         },
         {
-          "chunkIndex": 128,
-          "similarity": 0.5367
+          "chunkIndex": 146,
+          "similarity": 0.5184
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2916,
-      "promptTokens": 2365,
-      "completionTokens": 227,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information provided in the sources about the bodies and officers holding authority in the German imperial system.",
+      "latencyMs": 4308,
+      "promptTokens": 2084,
+      "completionTokens": 237,
       "embeddingTokens": 13,
-      "answer": "In the German imperial system, authority is held by several bodies and officers:\n\n1. **The Diet**: This body possesses the general power of legislating for the empire, making war and peace, contracting alliances, assessing quotas of troops and money, constructing fortresses, regulating coin, admitting new members, and subjecting disobedient members to the ban of the empire.\n\n2. **The Emperor**: The emperor acts as the executive magistrate with the power to make propositions to the diet, to negative its resolutions, to name ambassadors, to confer dignities and titles, to fill vacant electorates, to found universities, to grant privileges, and to oversee public safety. However, the emperor does not possess territory within the empire nor receives revenue for his support.\n\n3. **The Imperial Chamber and the Aulic Council**: These are judiciary tribunals that have supreme jurisdiction in controversies concerning the empire or among its members.\n\nThese bodies and officers collectively contribute to the governance and administration of the Germanic empire, although the system is characterized by a lack of effective central authority. \n\nSources used: [1], [3]"
+      "answer": "In the German imperial system, authority is held by several bodies and officers:\n\n1. **The Diet**: This body represents the component members of the confederacy and possesses the general power of legislating for the empire, making war and peace, contracting alliances, assessing quotas of troops and money, constructing fortresses, regulating coin, admitting new members, and subjecting disobedient members to the ban of the empire.\n\n2. **The Emperor**: The emperor acts as the executive magistrate and has the power to negative the decrees of the diet. The emperor also has numerous prerogatives, including the exclusive right to make propositions to the diet, name ambassadors, confer dignities and titles, fill vacant electorates, and generally watch over public safety.\n\n3. **The Imperial Chamber and the Aulic Council**: These are two judiciary tribunals that have supreme jurisdiction in controversies concerning the empire or among its members.\n\nThese bodies and officers collectively form the structure of authority within the Germanic empire, although the fundamental principle of the empire being a community of sovereigns leads to challenges in maintaining order and effective governance. \n\nSources used: [1], [5]"
     },
     {
       "id": "a14",
       "question": "Which partitioned European kingdom is used as a size comparison, its assembly having held ultimate power?",
       "answerable": true,
-      "rank": 1,
+      "rank": 4,
       "retrieved": [
         {
-          "chunkIndex": 88,
-          "similarity": 0.433
+          "chunkIndex": 150,
+          "similarity": 0.4888
         },
         {
-          "chunkIndex": 114,
-          "similarity": 0.4243
+          "chunkIndex": 144,
+          "similarity": 0.4867
         },
         {
-          "chunkIndex": 128,
-          "similarity": 0.5386
+          "chunkIndex": 133,
+          "similarity": 0.4524
         },
         {
-          "chunkIndex": 124,
-          "similarity": 0.5177
+          "chunkIndex": 103,
+          "similarity": 0.3825
         },
         {
-          "chunkIndex": 129,
-          "similarity": 0.4649
+          "chunkIndex": 145,
+          "similarity": 0.4708
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1719,
-      "promptTokens": 2371,
-      "completionTokens": 44,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly identifies Poland as the partitioned kingdom with a national diet holding supreme power, as supported by the sources.",
+      "latencyMs": 2007,
+      "promptTokens": 2114,
+      "completionTokens": 43,
       "embeddingTokens": 19,
-      "answer": "The partitioned European kingdom used as a size comparison is Poland, which had a national diet that served as the depositary of the supreme power before its dismemberment. \n\nSources used: [1], [5]"
+      "answer": "The partitioned European kingdom used as a size comparison is Poland, which had a national diet that was the depositary of the supreme power before its dismemberment. \n\nSources used: [1], [4]"
     },
     {
       "id": "a15",
       "question": "Which pair of European powers do Americans compete against in catching and selling fish?",
       "answerable": true,
-      "rank": 1,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 17,
-          "similarity": 0.501
+          "chunkIndex": 80,
+          "similarity": 0.4504
         },
         {
-          "chunkIndex": 69,
-          "similarity": 0.4231
+          "chunkIndex": 20,
+          "similarity": 0.4813
         },
         {
-          "chunkIndex": 71,
-          "similarity": 0.4661
+          "chunkIndex": 83,
+          "similarity": 0.4706
         },
         {
-          "chunkIndex": 67,
-          "similarity": 0.4446
+          "chunkIndex": 82,
+          "similarity": 0.3974
         },
         {
           "chunkIndex": 78,
-          "similarity": 0.4361
+          "similarity": 0.4288
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1520,
-      "promptTokens": 2307,
-      "completionTokens": 19,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly identifies France and Britain as competitors in the fisheries, as supported by the sources.",
+      "latencyMs": 1587,
+      "promptTokens": 2098,
+      "completionTokens": 20,
       "embeddingTokens": 15,
-      "answer": "Americans compete against France and Britain in catching and selling fish. Sources used: [1]"
+      "answer": "Americans compete against France and Britain in the fisheries. Sources used: [2], [3]"
     },
     {
       "id": "a16",
@@ -552,30 +582,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 38,
-          "similarity": 0.5632
+          "chunkIndex": 93,
+          "similarity": 0.5159
         },
         {
-          "chunkIndex": 80,
-          "similarity": 0.4972
-        },
-        {
-          "chunkIndex": 66,
-          "similarity": 0.4871
-        },
-        {
-          "chunkIndex": 73,
-          "similarity": 0.535
+          "chunkIndex": 94,
+          "similarity": 0.5032
         },
         {
           "chunkIndex": 79,
-          "similarity": 0.514
+          "similarity": 0.4835
+        },
+        {
+          "chunkIndex": 77,
+          "similarity": 0.4973
+        },
+        {
+          "chunkIndex": 45,
+          "similarity": 0.5717
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1750,
-      "promptTokens": 2338,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the information is not found in the provided sources.",
+      "latencyMs": 2141,
+      "promptTokens": 2099,
       "completionTokens": 19,
       "embeddingTokens": 18,
       "answer": "I couldn't find this in the provided documents. \n\nSources used: [1], [3]"
@@ -587,68 +619,72 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 71,
-          "similarity": 0.4474
+          "chunkIndex": 83,
+          "similarity": 0.4536
         },
         {
-          "chunkIndex": 67,
-          "similarity": 0.4543
+          "chunkIndex": 192,
+          "similarity": 0.4466
         },
         {
-          "chunkIndex": 69,
-          "similarity": 0.4517
+          "chunkIndex": 80,
+          "similarity": 0.4448
         },
         {
-          "chunkIndex": 17,
-          "similarity": 0.4881
+          "chunkIndex": 82,
+          "similarity": 0.4568
         },
         {
-          "chunkIndex": 74,
-          "similarity": 0.3765
+          "chunkIndex": 20,
+          "similarity": 0.4905
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1804,
-      "promptTokens": 2331,
-      "completionTokens": 30,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly identifies Spain as the power that shuts Americans out of the Mississippi River, supported by Source 5.",
+      "latencyMs": 1578,
+      "promptTokens": 2108,
+      "completionTokens": 31,
       "embeddingTokens": 13,
-      "answer": "Spain is the European power that shuts Americans out of the great western waterway, specifically the Mississippi River. Sources used: [1], [4]"
+      "answer": "Spain is the European power that shuts Americans out of the Mississippi River, which is the great western waterway. Sources used: [1], [5]"
     },
     {
       "id": "a18",
       "question": "How is anyone who denies that separated states would come to blows characterised?",
       "answerable": true,
-      "rank": 3,
+      "rank": 5,
       "retrieved": [
         {
-          "chunkIndex": 42,
-          "similarity": 0.5007
+          "chunkIndex": 44,
+          "similarity": 0.4786
         },
         {
-          "chunkIndex": 37,
-          "similarity": 0.48
+          "chunkIndex": 197,
+          "similarity": 0.4635
         },
         {
-          "chunkIndex": 26,
-          "similarity": 0.5006
+          "chunkIndex": 122,
+          "similarity": 0.5275
         },
         {
-          "chunkIndex": 105,
-          "similarity": 0.4956
+          "chunkIndex": 123,
+          "similarity": 0.5057
         },
         {
-          "chunkIndex": 52,
-          "similarity": 0.4542
+          "chunkIndex": 31,
+          "similarity": 0.4919
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 1938,
-      "promptTokens": 2351,
-      "completionTokens": 56,
+      "verdict": "grounded",
+      "verdictReason": "The characterization of someone denying that separated states would come to blows as 'far gone in Utopian speculations' is directly supported by Source 5.",
+      "latencyMs": 1834,
+      "promptTokens": 2115,
+      "completionTokens": 50,
       "embeddingTokens": 15,
-      "answer": "Anyone who denies that separated states would come to blows is characterized as being \"far gone in Utopian speculations.\" This suggests that such a person is unrealistic in their thinking about the potential conflicts that could arise from disunion among the states. \n\nSources used: [3]"
+      "answer": "Anyone who denies that separated states would come to blows is characterized as \"a man must be far gone in Utopian speculations.\" This implies that such a person is unrealistic or overly idealistic in their thinking. \n\nSources used: [5]"
     },
     {
       "id": "a19",
@@ -657,30 +693,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 188,
-          "similarity": 0.4763
+          "chunkIndex": 31,
+          "similarity": 0.4178
         },
         {
-          "chunkIndex": 105,
-          "similarity": 0.3939
+          "chunkIndex": 220,
+          "similarity": 0.4647
         },
         {
-          "chunkIndex": 199,
-          "similarity": 0.4209
+          "chunkIndex": 122,
+          "similarity": 0.396
         },
         {
-          "chunkIndex": 104,
-          "similarity": 0.4028
+          "chunkIndex": 215,
+          "similarity": 0.4298
         },
         {
-          "chunkIndex": 195,
-          "similarity": 0.4014
+          "chunkIndex": 207,
+          "similarity": 0.4032
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1827,
-      "promptTokens": 2404,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly declines to provide information not found in the sources.",
+      "latencyMs": 1965,
+      "promptTokens": 2104,
       "completionTokens": 14,
       "embeddingTokens": 17,
       "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
@@ -689,71 +727,75 @@
       "id": "a20",
       "question": "What limited help can troops give civil officers, and at what point does their power run out?",
       "answerable": true,
-      "rank": 1,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 46,
-          "similarity": 0.4529
+          "chunkIndex": 148,
+          "similarity": 0.3683
         },
         {
-          "chunkIndex": 195,
-          "similarity": 0.4216
+          "chunkIndex": 54,
+          "similarity": 0.444
         },
         {
-          "chunkIndex": 181,
-          "similarity": 0.3979
+          "chunkIndex": 55,
+          "similarity": 0.4051
         },
         {
-          "chunkIndex": 47,
-          "similarity": 0.392
+          "chunkIndex": 227,
+          "similarity": 0.4113
         },
         {
-          "chunkIndex": 43,
-          "similarity": 0.3581
+          "chunkIndex": 222,
+          "similarity": 0.4108
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2116,
-      "promptTokens": 2369,
-      "completionTokens": 87,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information provided in the sources.",
+      "latencyMs": 2039,
+      "promptTokens": 2122,
+      "completionTokens": 78,
       "embeddingTokens": 19,
-      "answer": "Troops can usefully aid civil officers to suppress a small faction, an occasional mob, or an insurrection. However, their power runs out when they are unable to enforce encroachments against the united efforts of the great body of the people. In other words, while troops can assist in minor disturbances, they cannot overpower the collective resistance of the citizenry when they stand together against military force. \n\nSources used: [1]"
+      "answer": "Troops can usefully aid civil officers to suppress a small faction, an occasional mob, or an insurrection. However, their power runs out when it comes to enforcing encroachments against the united efforts of the great body of the people. In such cases, the military will be unable to successfully impose its will against a determined populace. \n\nSources used: [2], [3]"
     },
     {
       "id": "a21",
       "question": "What do permanently employed government troops effectively become during peacetime?",
       "answerable": true,
-      "rank": 3,
+      "rank": 4,
       "retrieved": [
         {
-          "chunkIndex": 44,
-          "similarity": 0.4097
+          "chunkIndex": 55,
+          "similarity": 0.4313
         },
         {
-          "chunkIndex": 46,
-          "similarity": 0.4758
+          "chunkIndex": 52,
+          "similarity": 0.385
         },
         {
-          "chunkIndex": 166,
-          "similarity": 0.4449
+          "chunkIndex": 54,
+          "similarity": 0.4414
         },
         {
-          "chunkIndex": 47,
-          "similarity": 0.4115
+          "chunkIndex": 193,
+          "similarity": 0.425
         },
         {
-          "chunkIndex": 170,
-          "similarity": 0.41
+          "chunkIndex": 199,
+          "similarity": 0.4408
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2258,
-      "promptTokens": 2353,
-      "completionTokens": 36,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information in Source 4 about permanent corps in the pay of the government being a standing army in time of peace.",
+      "latencyMs": 1853,
+      "promptTokens": 2115,
+      "completionTokens": 50,
       "embeddingTokens": 13,
-      "answer": "Permanently employed government troops effectively become a standing army in time of peace. This standing army, although small, is still a real military establishment. Sources used: [3]."
+      "answer": "Permanently employed government troops effectively become a standing army in time of peace. This standing army, although small, is still real and exists to maintain order and provide defense, even when there is no active conflict. \n\nSources used: [4]"
     },
     {
       "id": "a22",
@@ -762,30 +804,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 35,
-          "similarity": 0.3486
+          "chunkIndex": 41,
+          "similarity": 0.3389
         },
         {
-          "chunkIndex": 36,
-          "similarity": 0.3318
+          "chunkIndex": 42,
+          "similarity": 0.3513
         },
         {
-          "chunkIndex": 152,
-          "similarity": 0.3941
+          "chunkIndex": 177,
+          "similarity": 0.3868
         },
         {
-          "chunkIndex": 151,
-          "similarity": 0.3828
+          "chunkIndex": 70,
+          "similarity": 0.3702
         },
         {
           "chunkIndex": 95,
-          "similarity": 0.3359
+          "similarity": 0.3326
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 2287,
-      "promptTokens": 2337,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the information is not found in the provided sources.",
+      "latencyMs": 1541,
+      "promptTokens": 2108,
       "completionTokens": 14,
       "embeddingTokens": 17,
       "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
@@ -794,36 +838,38 @@
       "id": "a23",
       "question": "What feelings would replace mutual trust and goodwill if America split into separate unions?",
       "answerable": true,
-      "rank": 3,
+      "rank": 4,
       "retrieved": [
         {
-          "chunkIndex": 22,
-          "similarity": 0.5362
+          "chunkIndex": 26,
+          "similarity": 0.5407
         },
         {
-          "chunkIndex": 91,
-          "similarity": 0.5421
+          "chunkIndex": 197,
+          "similarity": 0.5265
         },
         {
-          "chunkIndex": 23,
-          "similarity": 0.5866
+          "chunkIndex": 106,
+          "similarity": 0.5531
         },
         {
-          "chunkIndex": 24,
-          "similarity": 0.497
+          "chunkIndex": 27,
+          "similarity": 0.5807
         },
         {
-          "chunkIndex": 74,
-          "similarity": 0.5457
+          "chunkIndex": 29,
+          "similarity": 0.5176
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2199,
-      "promptTokens": 2360,
-      "completionTokens": 79,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the sources, which discuss envy, jealousy, and the dominance of partial interests in the event of a split.",
+      "latencyMs": 2071,
+      "promptTokens": 2102,
+      "completionTokens": 96,
       "embeddingTokens": 15,
-      "answer": "If America were to split into separate unions, mutual trust and goodwill would be replaced by envy, jealousy, and distrust. The document suggests that these negative feelings would lead to a lack of confidence among the separate nations, resulting in discord, jealousy, and mutual injuries. Instead of being united, they would become \"formidable only to each other.\" \n\nSources used: [1], [3]"
+      "answer": "If America were to split into separate unions, mutual trust and goodwill would likely be replaced by envy and jealousy. These feelings would extinguish confidence and affection among the separate confederacies, leading to a situation where the partial interests of each confederacy would dominate their policies and pursuits, rather than the general interests of all America. Consequently, they would be either involved in disputes and wars or live in constant apprehension of them. \n\nSources used: [1], [4]"
     },
     {
       "id": "a24",
@@ -832,68 +878,72 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 135,
-          "similarity": 0.5986
+          "chunkIndex": 187,
+          "similarity": 0.5968
         },
         {
-          "chunkIndex": 161,
-          "similarity": 0.5741
+          "chunkIndex": 112,
+          "similarity": 0.632
         },
         {
-          "chunkIndex": 96,
-          "similarity": 0.6312
+          "chunkIndex": 110,
+          "similarity": 0.5811
         },
         {
-          "chunkIndex": 160,
-          "similarity": 0.6047
+          "chunkIndex": 109,
+          "similarity": 0.6029
         },
         {
-          "chunkIndex": 5,
-          "similarity": 0.5472
+          "chunkIndex": 158,
+          "similarity": 0.594
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2071,
-      "promptTokens": 2357,
-      "completionTokens": 61,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the content of Sources 3 and 4 regarding the defects and national humiliation.",
+      "latencyMs": 3090,
+      "promptTokens": 2109,
+      "completionTokens": 70,
       "embeddingTokens": 18,
-      "answer": "The opening essay remarks on the \"material defects in our national system,\" acknowledging that there exist significant issues with the current government structure. It emphasizes that these defects are not minor or partial imperfections but rather fundamental errors that have led to the current state of disorder and misfortune. \n\nSources used: [3]"
+      "answer": "The opening essay begins with a remark acknowledging that there exist material defects in the national system, which have been long pointed out and regretted by the intelligent friends of the Union. It states that the nation has reached a stage of national humiliation, experiencing various issues that wound its pride and degrade its character. \n\nSources used: [3], [4]"
     },
     {
       "id": "a25",
       "question": "A group driven by common passion works against whose rights and which wider interests?",
       "answerable": true,
-      "rank": 5,
+      "rank": 2,
       "retrieved": [
         {
-          "chunkIndex": 61,
-          "similarity": 0.4631
+          "chunkIndex": 69,
+          "similarity": 0.4389
         },
         {
-          "chunkIndex": 59,
-          "similarity": 0.4611
+          "chunkIndex": 67,
+          "similarity": 0.4359
         },
         {
-          "chunkIndex": 2,
-          "similarity": 0.456
+          "chunkIndex": 72,
+          "similarity": 0.4357
         },
         {
-          "chunkIndex": 101,
-          "similarity": 0.411
+          "chunkIndex": 71,
+          "similarity": 0.4198
         },
         {
-          "chunkIndex": 57,
-          "similarity": 0.3838
+          "chunkIndex": 3,
+          "similarity": 0.4154
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2152,
-      "promptTokens": 2335,
-      "completionTokens": 33,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the information in Source 2.",
+      "latencyMs": 3917,
+      "promptTokens": 2089,
+      "completionTokens": 31,
       "embeddingTokens": 15,
-      "answer": "A group driven by common passion works against the rights of other citizens and the permanent and aggregate interests of the community. \n\nSources used: [1], [5]"
+      "answer": "A group driven by a common passion works against the rights of other citizens and the permanent and aggregate interests of the community. \n\nSources used: [2]"
     },
     {
       "id": "u01",
@@ -902,33 +952,35 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 136,
-          "similarity": 0.4768
+          "chunkIndex": 70,
+          "similarity": 0.4757
         },
         {
-          "chunkIndex": 187,
-          "similarity": 0.4988
+          "chunkIndex": 218,
+          "similarity": 0.4891
         },
         {
-          "chunkIndex": 167,
-          "similarity": 0.4545
+          "chunkIndex": 128,
+          "similarity": 0.4595
         },
         {
-          "chunkIndex": 174,
-          "similarity": 0.4572
+          "chunkIndex": 127,
+          "similarity": 0.4934
         },
         {
-          "chunkIndex": 60,
-          "similarity": 0.449
+          "chunkIndex": 177,
+          "similarity": 0.4766
         }
       ],
-      "abstained": true,
+      "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2139,
-      "promptTokens": 2416,
-      "completionTokens": 14,
+      "verdict": "grounded",
+      "verdictReason": "The answer accurately reflects the content of Source 4 regarding the judiciary's role in declaring legislative acts void.",
+      "latencyMs": 2492,
+      "promptTokens": 2105,
+      "completionTokens": 122,
       "embeddingTokens": 16,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "Publius argues that if the judges are not in conspiracy with the legislature, they would declare the resolutions of a majority in the legislature to be contrary to the supreme law of the land, unconstitutional, and void. This implies that the judiciary has the power to check the legislative authority by ensuring that laws passed do not violate the Constitution. The success of any attempt to usurp authority would require not only a factious majority in the legislature but also the concurrence of the courts and the body of the people. Thus, the judiciary serves as a guardian of the Constitution against legislative overreach.\n\nSources used: [4]"
     },
     {
       "id": "u02",
@@ -937,33 +989,35 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 180,
-          "similarity": 0.3132
+          "chunkIndex": 210,
+          "similarity": 0.3377
         },
         {
-          "chunkIndex": 109,
-          "similarity": 0.3001
+          "chunkIndex": 116,
+          "similarity": 0.2677
         },
         {
-          "chunkIndex": 99,
-          "similarity": 0.2559
+          "chunkIndex": 174,
+          "similarity": 0.3077
         },
         {
-          "chunkIndex": 149,
-          "similarity": 0.2844
+          "chunkIndex": 178,
+          "similarity": 0.2998
         },
         {
-          "chunkIndex": 102,
-          "similarity": 0.2552
+          "chunkIndex": 127,
+          "similarity": 0.2987
         }
       ],
       "abstained": true,
-      "lexicalCandidates": 17,
-      "latencyMs": 2488,
-      "promptTokens": 2362,
-      "completionTokens": 14,
+      "lexicalCandidates": 18,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the process for impeaching and trying a President is not described in the provided sources.",
+      "latencyMs": 1702,
+      "promptTokens": 2120,
+      "completionTokens": 15,
       "embeddingTokens": 13,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
     },
     {
       "id": "u03",
@@ -972,30 +1026,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 149,
-          "similarity": 0.3962
+          "chunkIndex": 174,
+          "similarity": 0.4203
         },
         {
-          "chunkIndex": 187,
-          "similarity": 0.384
+          "chunkIndex": 70,
+          "similarity": 0.3558
         },
         {
-          "chunkIndex": 175,
-          "similarity": 0.3447
+          "chunkIndex": 218,
+          "similarity": 0.359
         },
         {
-          "chunkIndex": 183,
-          "similarity": 0.382
+          "chunkIndex": 189,
+          "similarity": 0.3766
         },
         {
-          "chunkIndex": 162,
-          "similarity": 0.3721
+          "chunkIndex": 173,
+          "similarity": 0.3673
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1791,
-      "promptTokens": 2343,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the justification for the President's qualified veto over legislation is not found in the provided sources.",
+      "latencyMs": 1780,
+      "promptTokens": 2107,
       "completionTokens": 15,
       "embeddingTokens": 11,
       "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
@@ -1007,30 +1063,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 183,
-          "similarity": 0.3051
+          "chunkIndex": 127,
+          "similarity": 0.2777
         },
         {
-          "chunkIndex": 152,
-          "similarity": 0.3101
+          "chunkIndex": 214,
+          "similarity": 0.2939
         },
         {
-          "chunkIndex": 151,
-          "similarity": 0.3075
+          "chunkIndex": 177,
+          "similarity": 0.2897
         },
         {
-          "chunkIndex": 109,
-          "similarity": 0.2842
+          "chunkIndex": 176,
+          "similarity": 0.2856
         },
         {
-          "chunkIndex": 111,
-          "similarity": 0.2732
+          "chunkIndex": 70,
+          "similarity": 0.2635
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1789,
-      "promptTokens": 2282,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the information is not found in the provided sources.",
+      "latencyMs": 1777,
+      "promptTokens": 2095,
       "completionTokens": 15,
       "embeddingTokens": 12,
       "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
@@ -1042,33 +1100,35 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 167,
-          "similarity": 0.5301
+          "chunkIndex": 207,
+          "similarity": 0.5199
         },
         {
-          "chunkIndex": 175,
-          "similarity": 0.4976
+          "chunkIndex": 195,
+          "similarity": 0.5092
         },
         {
-          "chunkIndex": 178,
-          "similarity": 0.4717
+          "chunkIndex": 196,
+          "similarity": 0.4714
         },
         {
-          "chunkIndex": 168,
-          "similarity": 0.4831
+          "chunkIndex": 201,
+          "similarity": 0.4759
         },
         {
-          "chunkIndex": 137,
-          "similarity": 0.4681
+          "chunkIndex": 160,
+          "similarity": 0.4755
         }
       ],
       "abstained": false,
       "lexicalCandidates": 20,
-      "latencyMs": 2843,
-      "promptTokens": 2394,
-      "completionTokens": 147,
+      "verdict": "unsupported",
+      "verdictReason": "The answer's central claim about a bill of rights being unnecessary and dangerous is not directly supported by the sources.",
+      "latencyMs": 2776,
+      "promptTokens": 2111,
+      "completionTokens": 139,
       "embeddingTokens": 13,
-      "answer": "A bill of rights is described as unnecessary and even dangerous because it may imply that rights not explicitly listed are not protected, which could lead to a misunderstanding of the powers of the government. The argument is that the power of raising armies and other significant governmental functions inherently resides in the legislatures, making it superfluous to declare that such actions require legislative consent. This perspective suggests that the inclusion of such provisions could create ambiguity and potentially restrict the government's ability to act in the interest of public safety. Furthermore, it is argued that the zeal for liberty that motivates the demand for such restrictions may lead to imprudent limitations on legislative authority, which could endanger public safety and the effectiveness of government.\n\nSources used: [2], [3]"
+      "answer": "A bill of rights is described as unnecessary and even dangerous because it may create an impression that the rights listed are the only rights that exist, potentially leading to the assumption that any unlisted rights are not protected. This could undermine the broader principle of liberty and the inherent rights of individuals. Additionally, the document suggests that the principles which taught people to be cautious of the power of an hereditary monarch were extended to the representatives of the people, which could lead to unnecessary restrictions on legislative authority. The argument is that the existing structures and the nature of the government should be sufficient to protect rights without the need for a formal bill of rights that might limit them.\n\nSources used: [1], [3]"
     },
     {
       "id": "u06",
@@ -1077,30 +1137,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 64,
-          "similarity": 0.2761
+          "chunkIndex": 158,
+          "similarity": 0.3134
         },
         {
           "chunkIndex": 0,
-          "similarity": 0.2745
+          "similarity": 0.2695
         },
         {
-          "chunkIndex": 92,
-          "similarity": 0.3174
+          "chunkIndex": 40,
+          "similarity": 0.2941
         },
         {
-          "chunkIndex": 34,
-          "similarity": 0.2928
+          "chunkIndex": 9,
+          "similarity": 0.2879
         },
         {
-          "chunkIndex": 42,
-          "similarity": 0.283
+          "chunkIndex": 49,
+          "similarity": 0.2863
         }
       ],
       "abstained": true,
       "lexicalCandidates": 8,
-      "latencyMs": 1566,
-      "promptTokens": 2403,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the outcome of the 1800 presidential election is not found in the provided sources.",
+      "latencyMs": 1522,
+      "promptTokens": 2091,
       "completionTokens": 15,
       "embeddingTokens": 12,
       "answer": "I couldn't find this in the provided documents. \nSources used: None."
@@ -1112,33 +1174,35 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 107,
-          "similarity": 0.3273
+          "chunkIndex": 125,
+          "similarity": 0.3168
         },
         {
-          "chunkIndex": 79,
-          "similarity": 0.328
+          "chunkIndex": 129,
+          "similarity": 0.3069
         },
         {
-          "chunkIndex": 111,
-          "similarity": 0.3202
+          "chunkIndex": 91,
+          "similarity": 0.3151
         },
         {
-          "chunkIndex": 143,
-          "similarity": 0.3262
+          "chunkIndex": 92,
+          "similarity": 0.3156
         },
         {
-          "chunkIndex": 159,
-          "similarity": 0.301
+          "chunkIndex": 217,
+          "similarity": 0.3014
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1743,
-      "promptTokens": 2299,
-      "completionTokens": 14,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the provided sources do not address the regulation of cryptocurrency exchanges.",
+      "latencyMs": 1649,
+      "promptTokens": 2107,
+      "completionTokens": 15,
       "embeddingTokens": 9,
-      "answer": "I couldn't find this in the provided documents. \n\nSources used: None"
+      "answer": "I couldn't find this in the provided documents. \n\nSources used: None."
     },
     {
       "id": "u08",
@@ -1147,30 +1211,32 @@
       "rank": null,
       "retrieved": [
         {
-          "chunkIndex": 158,
-          "similarity": 0.2323
+          "chunkIndex": 182,
+          "similarity": 0.2552
         },
         {
-          "chunkIndex": 82,
-          "similarity": 0.2302
+          "chunkIndex": 235,
+          "similarity": 0.252
         },
         {
-          "chunkIndex": 157,
-          "similarity": 0.2566
+          "chunkIndex": 185,
+          "similarity": 0.2508
         },
         {
-          "chunkIndex": 156,
-          "similarity": 0.2557
+          "chunkIndex": 184,
+          "similarity": 0.2298
         },
         {
-          "chunkIndex": 202,
-          "similarity": 0.2345
+          "chunkIndex": 237,
+          "similarity": 0.2471
         }
       ],
       "abstained": true,
       "lexicalCandidates": 20,
-      "latencyMs": 1687,
-      "promptTokens": 2341,
+      "verdict": "grounded",
+      "verdictReason": "The answer correctly states that the information is not found in the sources.",
+      "latencyMs": 1761,
+      "promptTokens": 2120,
       "completionTokens": 15,
       "embeddingTokens": 13,
       "answer": "I couldn't find this in the provided documents. \nSources used: None."

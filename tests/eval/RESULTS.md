@@ -131,21 +131,67 @@ size. Raising overlap to 25% (512/128) cost 106,000 — 17% more. Any claim that
 smaller chunks are cheaper to index is wrong: the text is embedded either way,
 and only duplicated overlap adds tokens.
 
-## End-to-end, including generation
+## End-to-end, including generation and groundedness
 
-`npm run eval:hybrid` and `npm run eval:hybrid -- --style=paraphrase`.
+`npm run eval:judge` and `npm run eval:judge -- --style=paraphrase`, on the
+shipped configuration (384/48 chunks, hybrid RRF k=10 w=0.5).
 
 | Metric | verbatim | paraphrase |
 | --- | --- | --- |
-| hit-rate@5 | 96.0% | 68.0% |
-| MRR@5 | 0.736 | 0.461 |
-| abstention on unanswerable | 87.5% | 87.5% |
-| false abstention on answerable | 0.0% | 24.0% |
-| latency p50 | 1,978 ms | 1,938 ms |
-| cost per query | $0.00039 | $0.00038 |
+| hit-rate@5 | 88.0% | 76.0% |
+| MRR@5 | 0.738 | 0.433 |
+| **groundedness (fully grounded)** | **92.6%** (25/27) | **95.7%** (22/23) |
+| abstention on unanswerable | 75.0% | 75.0% |
+| false abstention on answerable | 0.0% | 16.0% |
+| latency p50 | 2,060 ms | 2,039 ms |
+| cost per query | $0.00035 | $0.00035 |
 
-The honest headline is the **paraphrase** column, because that is how users ask.
-Quote the verbatim number only alongside the overlap table above.
+Retrieval numbers reproduce the chunk sweep exactly (88.0% / 76.0%), which is
+the cross-check that the two harness paths measure the same pipeline.
+
+### What groundedness finally settles
+
+Hit-rate could never distinguish a retrieval miss that hallucinated from one
+that honestly declined — it scored them identically. Now they separate, and the
+answer is reassuring:
+
+**When retrieval fails, this system mostly says so rather than inventing.** On
+paraphrased questions, 10 of 33 answers were abstentions and only 1 substantive
+answer was unsupported. The 16% "false abstention" rate that looked like a
+regression is the system declining because retrieval genuinely failed — the safe
+failure mode, and the one you want in a RAG app. A number that looked bad in
+isolation was good once groundedness sat beside it.
+
+### The judge is measured, not trusted
+
+`npm run eval:judge-calibration` scores the judge against six hand-labelled
+cases before any groundedness number is quoted: **6/6**.
+
+The cases exist to catch specific failures — a real hallucination the harness
+caught on a05 (answering "Amphictyonic confederacy" when the corpus says Lycian
+and Achaean); a statement that is *true of the world but absent from the
+sources*, which is the distinction judges most often get wrong; a heavy
+paraphrase that must still count as grounded; and correct-claim-with-invented-
+detail, the failure mode that reads most convincingly.
+
+The judge runs on a different, stronger model than the generator (`gpt-4o` vs
+`gpt-4o-mini`). Asking a model to grade its own output invites self-preference.
+
+One calibration case initially failed: the judge called an abstention
+"unsupported". The hand label was defensible — an answer that declines asserts
+nothing — and the prompt simply had not specified how to treat abstentions. That
+gap was closed in the prompt rather than by relabelling the case.
+
+### What groundedness still does not measure
+
+**u01 was answered when it should have been declined, and the judge called it
+grounded — correctly.** The question asks about Federalist No. 78, outside the
+corpus; the model answered using real retrieved passages about courts and laws.
+Nothing was invented, so it is grounded. It is simply not an answer to the
+question asked.
+
+Groundedness measures support, not relevance and not correctness. A system can
+be 100% grounded and still answer the wrong question from genuine text.
 
 ## A note on determinism
 

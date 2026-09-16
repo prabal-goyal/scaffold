@@ -57,6 +57,12 @@ Chunk size was swept the same way (`npm run eval:chunks`): 384/48 tokens, using
 real `cl100k_base` counts rather than a character estimate. Everything from 256
 to 448 tokens beat 512 and 1024 on this corpus.
 
+Answers are also judged for **groundedness** — is every claim supported by the
+chunks actually retrieved? **92.6%** fully grounded on quoted questions, **95.7%**
+on paraphrased ones, with abstentions excluded so declining cannot inflate the
+score. The judge runs on a stronger model than the generator and is itself
+scored against hand-labelled cases (6/6) before any of that is quoted.
+
 Full method, the tuning caveats, and why hit-rate is not answer quality:
 [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
 

@@ -107,9 +107,24 @@ CV/portfolio claim it unlocks.
    - The harness imports `matchChunks` and `buildSystemPrompt` from `src/lib/`
      on purpose. A harness with its own copy of the prompt measures a pipeline
      the app does not run.
-   - Still missing: **groundedness**. `a05` shows why it matters — a retrieval
-     miss produced a confident wrong answer, which hit-rate alone scores the
-     same as a retrieval miss that correctly abstained.
+   - **Groundedness: done.** `tests/eval/judge.ts` — LLM-as-judge over (answer,
+     retrieved chunks), opt-in via `npm run eval:judge`. **92.6% fully grounded
+     on verbatim, 95.7% on paraphrase.**
+     - The judge runs on `gpt-4o`, deliberately not the generator's
+       `gpt-4o-mini`: a model grading its own output shows self-preference.
+     - **The judge is calibrated before it is trusted** —
+       `npm run eval:judge-calibration`, 6/6 against hand labels including the
+       real a05 hallucination and a true-but-absent claim. Quote groundedness
+       only with that agreement rate beside it.
+     - **Abstentions are excluded** from the rate. Counting them as grounded
+       would let a system that always declines score 100%.
+     - What it settled: the 16-24% "false abstention" rate is the system
+       declining when retrieval genuinely failed, not a regression. High
+       groundedness plus abstention means the failure mode is "I don't know"
+       rather than invention — the safe one.
+     - What it does not measure: **relevance**. u01 was answered when it should
+       have been declined, from real retrieved text, and is correctly judged
+       grounded. Grounded and wrong are compatible.
 
 4. ~~**Hybrid search + reranking.**~~ **Hybrid done and tuned; reranking not
    attempted.** Vector fused with Postgres full-text by *weighted* RRF
