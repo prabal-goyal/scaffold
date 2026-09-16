@@ -44,10 +44,10 @@ the whole matrix costs about half a cent.
 
 | strategy | verbatim | paraphrase | keyword | mean |
 | --- | --- | --- | --- | --- |
-| vector only | 80.0% | 68.0% | 56.0% | 68.0% |
-| lexical only | 96.0% | **20.0%** | **24.0%** | 46.7% |
-| RRF k=60 w=1 | 92.0% | 52.0% | 44.0% | 62.7% |
-| **RRF k=10 w=0.5** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
+| vector only | 88.0% | 72.0% | 64.0% | 74.7% |
+| lexical only | 92.0% | **12.0%** | **16.0%** | 40.0% |
+| RRF k=60 w=1 | 88.0% | 60.0% | 44.0% | 64.0% |
+| **RRF k=0 w=0.25** | **96.0%** | **76.0%** | **68.0%** | **80.0%** |
 
 ### MRR@5
 
@@ -138,16 +138,23 @@ shipped configuration (384/48 chunks, hybrid RRF k=10 w=0.5).
 
 | Metric | verbatim | paraphrase |
 | --- | --- | --- |
-| hit-rate@5 | 88.0% | 76.0% |
-| MRR@5 | 0.738 | 0.433 |
-| **groundedness (fully grounded)** | **92.6%** (25/27) | **95.7%** (22/23) |
+| hit-rate@5 | 96.0% | 76.0% |
+| MRR@5 | 0.677 | 0.560 |
+| **groundedness (fully grounded)** | **100.0%** (27/27) | **95.7%** (22/23) |
+| **unsupported answers** | **0** | **0** |
 | abstention on unanswerable | 75.0% | 75.0% |
 | false abstention on answerable | 0.0% | 16.0% |
-| latency p50 | 2,060 ms | 2,039 ms |
+| latency p50 | 2,078 ms | 1,991 ms |
 | cost per query | $0.00035 | $0.00035 |
 
-Retrieval numbers reproduce the chunk sweep exactly (88.0% / 76.0%), which is
-the cross-check that the two harness paths measure the same pipeline.
+Retrieval numbers reproduce the strategy sweep exactly, which cross-checks that
+the two harness paths measure the same pipeline.
+
+**Fusion parameters were re-tuned after the chunker changed.** k=10/w=0.5 had
+been chosen at the old chunk size and was no longer best at 384/48; k=0/w=0.25
+now beats vector-only on all six style × metric cells. The two stages interact,
+so a retrieval parameter chosen before a chunking change is not still optimal
+after it.
 
 ### What groundedness finally settles
 

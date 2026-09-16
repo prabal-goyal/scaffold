@@ -9,16 +9,45 @@ on Supabase/Postgres · Vercel AI SDK v4 · Tailwind
 **Repository:** https://github.com/prabal-goyal/scaffold
 
 ```
-src/lib/chunker.ts          sentence-aware chunking (500 tok target / 50 overlap)
-src/lib/openai.ts           client + model constants
-src/app/api/ingest/route.ts PDF → parse → chunk → embed → store
-src/app/api/chat/route.ts   embed question → match_chunks RPC → streamed answer
-src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
+src/lib/chunker.ts          sentence-aware chunking, 384 tok / 48 overlap, cl100k_base
+src/lib/retrieval.ts        vector + full-text retrieval, hybrid fusion
+src/lib/rrf.ts              weighted reciprocal rank fusion
+src/lib/prompt.ts           system prompt + abstention phrase (shared with the harness)
 src/lib/validation.ts       zod schemas + parseJsonBody for route bodies
 src/lib/rate-limit.ts       in-memory sliding window (per-instance)
+src/lib/openai.ts           client, model constants, per-call timeout budgets
 src/lib/supabase.service.ts service-role client — server-only
-supabase/migrations/        schema the code depends on
+src/app/api/ingest/route.ts PDF → parse → chunk → embed (batched) → store
+src/app/api/chat/route.ts   embed question → hybrid retrieval → streamed answer
+src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
+supabase/migrations/        schema the code depends on (0002-0005 must be applied)
+tests/run-tests.ts          32 unit tests, no API keys needed
+tests/eval/                 offline evaluation harness — see RESULTS.md
 ```
+
+---
+
+## Current measured state
+
+Shipped configuration: 384/48 chunks, hybrid retrieval (RRF k=0, lexical weight
+0.25). Full method and caveats in `tests/eval/RESULTS.md`.
+
+| Metric | quoted wording | paraphrased |
+| --- | --- | --- |
+| hit-rate@5 | 96.0% | 76.0% |
+| MRR@5 | 0.677 | 0.560 |
+| groundedness | 100.0% (27/27) | 95.7% (22/23) |
+| unsupported answers | 0 | 0 |
+| latency p50 | 2,078 ms | 1,991 ms |
+| cost per query | $0.00035 | $0.00035 |
+
+**Quote the paraphrased column.** It is how users actually ask; the quoted column
+flatters the system because those questions share vocabulary with the passage
+that answers them.
+
+Harness commands: `eval:validate` (free), `eval`, `eval:hybrid`, `eval:judge`,
+`eval:judge-calibration`, `eval:sweep`, `eval:chunks`, `eval:diagnose`,
+`eval:corpus`.
 
 ---
 
@@ -38,7 +67,8 @@ rule, so it is written down alongside it.
    client and a service client in the same file. The old `src/lib/supabase.ts`
    held both, guarded by a comment saying "never import in client components" —
    and two client components imported it anyway. A comment is not a boundary; a
-   build failure is.
+   build failure is. Note `server-only` does *not* fire on an unused import, so
+   the ESLint rule in `eslint.config.mjs` covers that gap.
 
 3. **Every route that spends money is rate-limited before it calls the
    provider.** Check the limit before reading the body, so a limited caller
@@ -65,199 +95,156 @@ rule, so it is written down alongside it.
    relies on a `(user_id, name)` unique constraint; untracked, it silently
    degrades to duplicate inserts in a fresh environment.
 
+9. **Bound every provider call to less than the route's own budget.** The OpenAI
+   SDK defaults to a 10-minute timeout; the routes are killed at 30s and 60s. A
+   timeout longer than the function's life means its retries can never fire.
+
+10. **Measure on inputs that look like real ones.** Questions written by copying
+    a passage make lexical search look excellent and vector search look poor —
+    the first version of the golden set did exactly this and nearly shipped the
+    wrong retriever. See `tests/eval/golden.ts`.
+
 ---
 
-## Improvements Backlog (code review — Sep 2026)
+## Done
 
-Findings from a full read of `src/`, ranked by value. Each item notes the
-CV/portfolio claim it unlocks.
+### Security (Sep 2026 audit)
 
-### P0 — Done
+- **`/api/eval` authentication and user scoping** — `0067440`.
+- **Arbitrary `role` in `/api/chat`** — the worst bug found. Fixed by
+  `chatRequestSchema`; `system` is rejected.
+- **Rate limiting** — `src/lib/rate-limit.ts`, on chat, ingest and eval.
+  Per-instance, documented as a speed bump rather than a guarantee.
+- **Direct database access** — `anon` *and* `authenticated` could call
+  `match_chunks` with a forged `filter_user_id`, bypassing route auth entirely.
+  RLS enabled and the function revoked in `0002`. Verified with real data: a
+  second signed-in user sees nothing of the first user's documents.
+- **Secret module split** — `createServiceClient` moved out of the module two
+  client components imported, into one marked `server-only`.
+- **Cross-user document collision** — `32ee9fb`, upsert on `(user_id, name)`.
+- **Raw Postgres errors** no longer returned to clients.
+- **Malformed uploads** — `pdfParse` and `req.formData()` wrapped; random bytes
+  and truncated headers return 422 with an explanation, not an uncaught 500.
+- **Unbounded embeddings batch** — batches of 100, with a 600-chunk ceiling.
+  The 4 MB upload cap never bounded the work: PDF streams are compressed.
+- **Unreachable retries** — the SDK had `maxRetries: 2` all along but a 10-minute
+  timeout, so a hung call outlived the function. Per-call budgets now fit inside
+  `maxDuration`.
 
-1. ~~**`npm test` is broken.**~~ Fixed in `54783fd` — `tests/run-tests.ts` now
-   exists with unit tests for `chunkText` and `checkRateLimit`.
+### Evaluation harness
 
-2. ~~**`/api/eval` has no authentication.**~~ Fixed in `0067440` — both verbs
-   require a session and scope by `user_id`.
+`tests/eval/` — fixed public-domain corpus (Federalist Papers 1-30, 242 chunks),
+25 answerable questions asked in **three styles** plus 8 unanswerable ones.
 
-3. ~~**`/api/chat` accepted an arbitrary `role`.**~~ Fixed — see
-   non-negotiable 1. Validated by `chatRequestSchema`.
+- **Gold answers match by snippet containment, not chunk index**, so the set
+  survives re-chunking. That design bet is what made the chunk sweep a one-cent
+  script rather than a re-labelling job.
+- **The harness imports `hybridSearch` and `buildSystemPrompt` from `src/lib/`.**
+  A harness with its own copy measures a pipeline the app does not run.
+- **Three question styles** — verbatim, paraphrase, keyword. Measured word
+  overlap with the gold passage: 0.522 / 0.050 / 0.059. Reported by
+  `eval:validate` so the bias stays quantified rather than asserted.
+- **Groundedness judge** on `gpt-4o`, deliberately not the generator's
+  `gpt-4o-mini`. Calibrated 6/6 against hand labels before being trusted;
+  abstentions excluded so a system that always declines cannot score 100%.
+- What groundedness settled: the 16% "false abstention" rate is the system
+  declining when retrieval genuinely failed, not a regression. The failure mode
+  is "I don't know", not invention.
+- What it does not measure: **relevance**. An answer can be fully grounded in
+  real retrieved text and still not answer the question asked.
 
-4. ~~**No rate limiting anywhere.**~~ Fixed — `src/lib/rate-limit.ts` applied to
-   chat, ingest and eval. Note the documented per-instance limitation.
+### Retrieval
 
-5. ~~**Anon and authenticated could call `match_chunks` directly**~~ with any
-   `filter_user_id`, bypassing route auth entirely. Fixed by
-   `supabase/migrations/0002_rls_and_rpc_lockdown.sql` — **must be run in the
-   Supabase SQL editor**, it is not applied automatically.
+Hybrid — vector fused with Postgres full-text by weighted RRF. Migrations
+0003-0005.
 
-### P1 — The eval harness (highest-value item in the project)
+| strategy | verbatim | paraphrase | keyword | mean |
+| --- | --- | --- | --- | --- |
+| vector only | 88.0% | 72.0% | 64.0% | 74.7% |
+| lexical only | 92.0% | 12.0% | 16.0% | 40.0% |
+| **RRF k=0 w=0.25** | **96.0%** | **76.0%** | **68.0%** | **80.0%** |
 
-3. ~~**Build a real evaluation harness.**~~ **Done.** `tests/eval/` — fixed
-   public-domain corpus (Federalist Papers 1-30, 208 chunks), 25 answerable +
-   8 unanswerable questions, measuring hit-rate@5, MRR@5, abstention, p95
-   latency and $/query. Baseline committed in `tests/eval/RESULTS.md`:
-   **hit-rate@5 80.0%, MRR@5 0.627, abstention 75.0%**.
+Hard-won details:
 
-   Notes for whoever extends it:
-   - Gold answers are matched by **snippet containment, not chunk index**, so
-     the set survives a change to chunking — which is what makes (5) possible.
-   - `npm run eval:validate` is free and checks every gold snippet still exists.
-     Run it after touching the corpus or the golden set.
-   - The harness imports `matchChunks` and `buildSystemPrompt` from `src/lib/`
-     on purpose. A harness with its own copy of the prompt measures a pipeline
-     the app does not run.
-   - **Groundedness: done.** `tests/eval/judge.ts` — LLM-as-judge over (answer,
-     retrieved chunks), opt-in via `npm run eval:judge`. **92.6% fully grounded
-     on verbatim, 95.7% on paraphrase.**
-     - The judge runs on `gpt-4o`, deliberately not the generator's
-       `gpt-4o-mini`: a model grading its own output shows self-preference.
-     - **The judge is calibrated before it is trusted** —
-       `npm run eval:judge-calibration`, 6/6 against hand labels including the
-       real a05 hallucination and a true-but-absent claim. Quote groundedness
-       only with that agreement rate beside it.
-     - **Abstentions are excluded** from the rate. Counting them as grounded
-       would let a system that always declines score 100%.
-     - What it settled: the 16-24% "false abstention" rate is the system
-       declining when retrieval genuinely failed, not a regression. High
-       groundedness plus abstention means the failure mode is "I don't know"
-       rather than invention — the safe one.
-     - What it does not measure: **relevance**. u01 was answered when it should
-       have been declined, from real retrieved text, and is correctly judged
-       grounded. Grounded and wrong are compatible.
+- **Lexical search scores 92% on questions copied from the passage and 12% on
+  paraphrases of the same questions.** A single-style eval would have shipped
+  lexical-only.
+- **Equal-weight fusion was a regression.** Fusing a retriever that is usually
+  wrong drags down one that was right. Lexical gets a quarter vote.
+- **Prefer dominance over means.** The shipped config beats vector-only on all
+  six style × metric cells; a better mean can hide a regression in one style.
+- **Tuning stages interact.** k and the weight were first tuned at the old chunk
+  size and were no longer best after chunking changed. Re-sweep retrieval
+  parameters after any chunking change.
+- **A retriever returning zero rows looks exactly like one that works.** The
+  first full-text function used `websearch_to_tsquery`, which ANDs terms, so it
+  matched nothing and hybrid silently ran as vector-only with plausible metrics.
+  The runner now reports lexical contribution and warns when it is zero.
+- **Ties need a tie-break.** `ts_rank` ties plus `LIMIT` made retrieval
+  non-deterministic; two identical runs disagreed. Fixed in `0005`.
+- k and the weight were swept against the same set they are scored on. Treat
+  them as a sensible region, not an optimum.
 
-4. ~~**Hybrid search + reranking.**~~ **Hybrid done and tuned; reranking not
-   attempted.** Vector fused with Postgres full-text by *weighted* RRF
-   (`src/lib/rrf.ts`), shipped in `/api/chat`. Migrations 0003-0005.
+### Chunking
 
-   The golden set now asks each question three ways — verbatim, paraphrase,
-   keyword — because the first version was biased. Measured word overlap with
-   the gold passage: **0.522 verbatim vs 0.050 paraphrase**.
+`js-tiktoken` / `cl100k_base`, 384 tokens with 48 overlap, chosen by sweeping.
 
-   hit-rate@5 across styles (`npm run eval:sweep`):
+- **Smaller chunks win here, up to a point** — 256-448 all beat 512 and 1024.
+  Differences inside that band are a question or two, i.e. noise at n=25.
+- **Fixing the tokenizer made retrieval worse before it made it better.** The old
+  `length / 4` estimate overshot ~14%, so "500-token" chunks were really ~437.
+- **Chunk size barely affects indexing cost; overlap ratio does.** At 12.5%
+  overlap every configuration embedded ~91k tokens; 25% overlap cost 17% more.
+  The originally hoped-for "40% lower embedding cost" claim is not supported.
 
-   | strategy | verbatim | paraphrase | keyword | mean |
-   | --- | --- | --- | --- | --- |
-   | vector only | 80.0% | 68.0% | 56.0% | 68.0% |
-   | lexical only | 96.0% | 20.0% | 24.0% | 46.7% |
-   | RRF k=60 w=1 | 92.0% | 52.0% | 44.0% | 62.7% |
-   | **RRF k=10 w=0.5** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
+### Housekeeping
 
-   Things that cost real time to learn here:
-   - **Never evaluate retrieval on questions written from the passage.** Lexical
-     search scored 96% on that style and 20% on paraphrases of the same
-     questions. A single-style eval would have shipped lexical-only.
-   - **Equal-weight fusion was a regression** (62.7% vs vector's 68.0%): fusing
-     a retriever that is usually wrong drags down one that was right. Lexical
-     gets weight 0.5.
-   - **Prefer dominance over means.** k=10/w=0.5 ships because it is never worse
-     than vector-only on any style or metric — a better mean hid the regression.
-   - k and the weight were swept against the same set they are measured on.
-     Treat them as a sensible region, not an optimum.
-   - **A lexical retriever returning zero rows looks exactly like one that
-     works.** 0003 used `websearch_to_tsquery`, which ANDs terms, so it matched
-     nothing and hybrid silently ran as vector-only with plausible metrics. The
-     runner now reports lexical contribution per run.
-   - **Ties need a tie-break.** `ts_rank` ties plus LIMIT made lexical retrieval
-     non-deterministic and two identical runs disagreed. Fixed in 0005.
-   - Still undone: a reranker. The remaining paraphrase misses are cases where
-     *neither* retriever finds the passage, so fusion tuning cannot help.
+- `npm test` repaired and grown to 32 unit tests — chunker, tokenizer, rate
+  limiter, validation schemas, RRF. No API keys needed.
+- `lint` and `typecheck` scripts work; ESLint flat config for ESLint 9.
+- `.env.example` added; README documents the four required variables, the
+  Supabase setup steps (email provider on, confirm email off) and the migrations.
 
-5. ~~**Use a real tokenizer.**~~ **Done.** `js-tiktoken` with `cl100k_base` —
-   the encoding `text-embedding-3-small` and `gpt-4o-mini` actually bill on.
-   `chunkText` now takes `{ chunkSize, overlap }`, and defaults were chosen by
-   sweeping (`npm run eval:chunks`), landing on **384/48**.
+---
 
-   What the sweep actually showed:
-   - **Smaller chunks win here, up to a point.** 256-448 all beat 512 and 1024.
-     That direction is the solid result; differences inside 256-448 are a
-     question or two, which is noise at n=25 per style.
-   - **The tokenizer fix made retrieval worse before it made it better.** The
-     old `length / 4` estimate overshot ~14%, so "500-token" chunks were really
-     ~437. Honest 512-token chunks scored 69.3% mean against the accidental
-     setting's 73.3%. The sweep is what recovered it.
-   - **Chunk size barely affects indexing cost; overlap ratio does.** At 12.5%
-     overlap every configuration embedded ~91k tokens whatever the chunk size;
-     25% overlap cost 17% more. The backlog's hoped-for "40% lower embedding
-     cost" claim is not supported — the text gets embedded either way.
-   - Re-chunking invalidates nothing in the golden set, because gold answers
-     match by snippet containment. That was the design bet and it paid off.
+## Remaining
+
+Nothing here is a known defect in the shipped request path. Ranked by value.
+
+1. **Single-document limitation.** `src/app/api/ingest/route.ts` deletes every
+   other document the user owns after a successful upload. Uploading a second
+   file silently destroys the first — the most user-visible flaw left, and a
+   better demo once fixed (cross-document citation).
+
+2. **Dashboard is a Client Component that fetches what the server already has.**
+   `src/app/dashboard/page.tsx` calls `/api/eval` from a `useEffect`. Its
+   `.then(setStats)` has **no `.catch`**, so an error response renders as `NaN%`
+   rather than an error — a real bug, not just an architecture smell.
+
+3. **No security headers in `next.config.mjs`.** Missing CSP, HSTS,
+   `X-Frame-Options`/`frame-ancestors`, `nosniff`, `Referrer-Policy`. The
+   concrete risk is clickjacking against the destructive upload above.
+
+4. **Prompt injection from document content and filenames.** `/api/chat`
+   interpolates chunk text and `document_name` into the system prompt with no
+   delimiting. Self-injection only while retrieval is single-tenant — becomes a
+   real attack the moment sharing or cross-document retrieval is added.
+
+5. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported` true**,
+   parsing attacker-uploaded binaries. No reachable exploit chain was confirmed
+   through the text-extraction path used here, but a seven-year-old parser on
+   untrusted input is a bad place to rely on that distinction. Replace with
+   `unpdf`, or current `pdfjs-dist` with `isEvalSupported: false`.
 
 6. **Log cost, latency and token counts per query** into the `evals` table
-   (currently only `rating` is stored). The dashboard then shows p95 latency and
-   $/query instead of a thumbs-up percentage — an observability surface rather than
-   a feedback widget.
+   (currently only `rating`). The dashboard would then show p95 latency and
+   $/query instead of a thumbs-up percentage.
 
-### P2 — Correctness and robustness
+7. **Reranking** — the other half of the hybrid-search item. The remaining
+   paraphrase misses are cases where *neither* retriever finds the passage, so
+   fusion tuning cannot reach them. A cross-encoder over a wider candidate pool
+   is the lever.
 
-7. ~~**Cross-user document collision.**~~ Fixed in `32ee9fb` — ingest upserts on
-   `(user_id, name)`. The constraint itself is now recorded in
-   `supabase/migrations/0002_rls_and_rpc_lockdown.sql`.
-
-8. **Single-document limitation.** Ingest deletes every other document the user
-   owns after a successful upload. Supporting multiple documents with a filter is
-   both more useful and a better demo (cross-document citation).
-
-9. ~~**Unbounded embeddings batch.**~~ Fixed — ingest embeds in batches of
-   `EMBEDDING_BATCH_SIZE` (100) and refuses documents over `MAX_CHUNKS` (600)
-   with an explanation rather than running until the function is killed. The
-   4 MB upload cap bounds the file, not the work: PDF streams are compressed.
-
-10. ~~**No retries or timeouts on any OpenAI call.**~~ Fixed — **and this item
-    was wrong.** The SDK already defaulted to `maxRetries: 2` and a **10-minute**
-    timeout. The retries were not missing, they were unreachable: the routes are
-    killed at 30s (chat) and 60s (ingest), so a hung call burned the whole budget
-    while the SDK waited and no retry ever fired. Per-call timeouts now sit well
-    under each route's `maxDuration` (`src/lib/openai.ts`), which is what makes
-    the retries usable.
-
-11. **No tests beyond the harness.** `chunkText` is a pure function and ideal for
-    unit tests: overlap correctness, sentence-boundary splitting, empty input, text
-    with no terminal punctuation.
-
-### P2 — Deferred from the Sep 2026 security pass
-
-Found by audit, deliberately not fixed in that pass (scope was "exploitable
-now"). Listed so they are not rediscovered from scratch.
-
-12. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported`
-    defaulting to true**, parsing attacker-uploaded binaries. No reachable
-    exploit chain was confirmed via the text-extraction path used here — the
-    published CVE-2024-4367 route runs through display-layer code this app never
-    calls — but a seven-year-old parser on untrusted input is a bad place to be
-    relying on that distinction. Replace with `unpdf`, or current `pdfjs-dist`
-    with `isEvalSupported: false`.
-
-13. **No security headers in `next.config.mjs`.** Missing CSP, HSTS,
-    `X-Frame-Options`/`frame-ancestors`, `nosniff`, `Referrer-Policy`. The
-    concrete risk is clickjacking, since every upload destructively deletes the
-    user's prior documents.
-
-14. **Prompt injection from document content and filenames.** `/api/chat`
-    interpolates retrieved chunk text and `document_name` into the system prompt
-    with no delimiting. Self-injection only while retrieval is single-tenant —
-    becomes a real cross-user attack the moment sharing, cross-document
-    retrieval or tool-calling is added.
-
-15. ~~**No `try/catch` around `pdfParse`.**~~ Fixed — `pdfParse` and
-    `req.formData()` are both wrapped, returning 422 and 400 with usable
-    messages. Verified: random bytes and a truncated header both return 422
-    instead of an uncaught 500. The filename-only type check remains (no
-    magic-byte validation), but `pdfParse` failing loudly now covers it.
-
-16. **Dashboard fetches on the client what the server already has.**
-    `src/app/dashboard/page.tsx` calls `/api/eval` from a `useEffect`, costing a
-    hydrate plus a round-trip and flashing `Loading…`. It should be a Server
-    Component passing `stats` into a thin client animation wrapper. Its
-    `.then(setStats)` also has no `.catch`, so an error response renders as
-    `NaN%` rather than an error.
-
-17. **No `.env.example`,** and `README.md` documents `.env.local` while the repo
-    uses `.env`. Four vars are required: `NEXT_PUBLIC_SUPABASE_URL`,
-    `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-    `OPENAI_API_KEY`.
-
-18. **Supabase auth settings are an undocumented setup dependency.** The app
-    expects `signUp()` to return a session immediately, which requires *Confirm
-    email* to be off. A fresh project has it on, so sign-up fails with a
-    misleading "Could not complete sign-up" error.
+8. **Golden set size.** 25 questions per style means one question is 4 points.
+   Absolute numbers are soft; the harness is reliable for paired before/after
+   comparison, not for pinning a number.

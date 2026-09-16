@@ -34,13 +34,18 @@ export const CANDIDATE_COUNT = 20;
  * results down — unweighted fusion measured *worse* than vector alone on
  * realistic queries (62.7% mean against 68.0%).
  *
- * At k=10 with weight 0.5, fusion is never worse than vector-only on any style
- * or either metric, and adds 16 points of hit-rate when the user does quote the
- * document. That dominance is the reason for these values, rather than a better
- * average — which can hide a regression in one style.
+ * At k=0 with weight 0.25, fusion beats vector-only on all three styles and
+ * both metrics — six cells out of six. That dominance is the reason for these
+ * values, rather than a better average, which can hide a regression in one
+ * style.
+ *
+ * These were re-tuned after the chunker changed. The first tuning (k=10, w=0.5)
+ * was done at the old chunk size and was no longer best once chunking moved:
+ * the two stages interact, so a retrieval parameter chosen before a chunking
+ * change is not still optimal after it.
  */
-export const FUSION_K = 10;
-export const LEXICAL_WEIGHT = 0.5;
+export const FUSION_K = 0;
+export const LEXICAL_WEIGHT = 0.25;
 
 /** Identity of a chunk across the two retrievers, which return no row id. */
 export function chunkKey(chunk: RetrievedChunk): string {

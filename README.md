@@ -43,23 +43,23 @@ hit-rate@5:
 
 | strategy | quoted | paraphrased | keywords | mean |
 | --- | --- | --- | --- | --- |
-| vector only | 80.0% | 68.0% | 56.0% | 68.0% |
-| lexical only | 96.0% | 20.0% | 24.0% | 46.7% |
-| **hybrid (shipped)** | **96.0%** | **68.0%** | **56.0%** | **73.3%** |
+| vector only | 88.0% | 72.0% | 64.0% | 74.7% |
+| lexical only | 92.0% | 12.0% | 16.0% | 40.0% |
+| **hybrid (shipped)** | **96.0%** | **76.0%** | **68.0%** | **80.0%** |
 
 Hybrid is vector search fused with Postgres full-text by weighted reciprocal
 rank fusion. Lexical gets half a vote: alone it scores 96% on quoted questions
-and 20% on paraphrased ones, so at equal weight it made results *worse* than
-vector alone. The shipped weighting is never worse than vector-only on any
-style, and adds 16 points when users do quote the document.
+and 12% on paraphrased ones, so at equal weight it made results *worse* than
+vector alone. The shipped weighting beats vector-only on all three styles and
+both metrics.
 
 Chunk size was swept the same way (`npm run eval:chunks`): 384/48 tokens, using
 real `cl100k_base` counts rather than a character estimate. Everything from 256
 to 448 tokens beat 512 and 1024 on this corpus.
 
 Answers are also judged for **groundedness** — is every claim supported by the
-chunks actually retrieved? **92.6%** fully grounded on quoted questions, **95.7%**
-on paraphrased ones, with abstentions excluded so declining cannot inflate the
+chunks actually retrieved? **100%** fully grounded on quoted questions, **95.7%**
+on paraphrased ones, with zero unsupported answers in either run, with abstentions excluded so declining cannot inflate the
 score. The judge runs on a stronger model than the generator and is itself
 scored against hand-labelled cases (6/6) before any of that is quoted.
 
