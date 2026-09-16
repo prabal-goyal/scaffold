@@ -16,8 +16,10 @@ src/lib/prompt.ts           system prompt + abstention phrase (shared with the h
 src/lib/validation.ts       zod schemas + parseJsonBody for route bodies
 src/lib/rate-limit.ts       in-memory sliding window (per-instance)
 src/lib/openai.ts           client, model constants, per-call timeout budgets
+src/lib/stats.ts            eval aggregation, shared by the route and the dashboard
 src/lib/supabase.service.ts service-role client — server-only
 src/app/api/ingest/route.ts PDF → parse → chunk → embed (batched) → store
+src/app/api/documents/      list and delete the caller's documents
 src/app/api/chat/route.ts   embed question → hybrid retrieval → streamed answer
 src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
 supabase/migrations/        schema the code depends on (0002-0005 must be applied)
@@ -205,46 +207,55 @@ Hard-won details:
 - `.env.example` added; README documents the four required variables, the
   Supabase setup steps (email provider on, confirm email off) and the migrations.
 
+### Multi-document, dashboard and headers (closing pass)
+
+- **Multiple documents.** Ingest no longer deletes every other document on
+  upload — that silently destroyed the previous file. `GET /api/documents` lists
+  them and `DELETE /api/documents?id=` removes one, ownership checked by
+  `user_id` so an id in the query string is not a claim of ownership. Retrieval
+  already spanned all of a user's chunks, so answers now cite across documents;
+  verified with two uploads where one question drew sources from both.
+- **Dashboard is a Server Component.** It fetched `/api/eval` from a `useEffect`
+  with no `.catch`, so an error response rendered as `NaN%` — a wrong number
+  presented as a real one. It now queries through `src/lib/stats.ts`, shared
+  with the route, and the gsap animation lives in a client leaf.
+- **Security headers** in `next.config.mjs`: CSP, HSTS, `X-Frame-Options`,
+  `nosniff`, `Referrer-Policy`, `Permissions-Policy`. `frame-ancestors 'none'`
+  is the one that matters, since uploads change indexed state. `script-src`
+  carries `'unsafe-inline'` because Next injects inline hydration scripts and
+  there is no per-request nonce yet — so the policy blocks external script and
+  connection origins, not injected inline script.
+
 ---
 
 ## Remaining
 
 Nothing here is a known defect in the shipped request path. Ranked by value.
 
-1. **Single-document limitation.** `src/app/api/ingest/route.ts` deletes every
-   other document the user owns after a successful upload. Uploading a second
-   file silently destroys the first — the most user-visible flaw left, and a
-   better demo once fixed (cross-document citation).
-
-2. **Dashboard is a Client Component that fetches what the server already has.**
-   `src/app/dashboard/page.tsx` calls `/api/eval` from a `useEffect`. Its
-   `.then(setStats)` has **no `.catch`**, so an error response renders as `NaN%`
-   rather than an error — a real bug, not just an architecture smell.
-
-3. **No security headers in `next.config.mjs`.** Missing CSP, HSTS,
-   `X-Frame-Options`/`frame-ancestors`, `nosniff`, `Referrer-Policy`. The
-   concrete risk is clickjacking against the destructive upload above.
-
-4. **Prompt injection from document content and filenames.** `/api/chat`
+1. **Prompt injection from document content and filenames.** `/api/chat`
    interpolates chunk text and `document_name` into the system prompt with no
-   delimiting. Self-injection only while retrieval is single-tenant — becomes a
-   real attack the moment sharing or cross-document retrieval is added.
+   delimiting. This matters more now that retrieval spans multiple documents: a
+   poisoned PDF can influence answers about the others.
 
-5. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported` true**,
+2. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported` true**,
    parsing attacker-uploaded binaries. No reachable exploit chain was confirmed
    through the text-extraction path used here, but a seven-year-old parser on
    untrusted input is a bad place to rely on that distinction. Replace with
-   `unpdf`, or current `pdfjs-dist` with `isEvalSupported: false`.
+   `unpdf`, or current `pdfjs-dist` with `isEvalSupported: false`. Its age shows
+   in practice: it rejects small pdfkit-generated PDFs with "bad XRef entry"
+   while reading larger ones from the same generator fine.
 
-6. **Log cost, latency and token counts per query** into the `evals` table
+   Also a **nonce-based CSP** would let `script-src` drop `'unsafe-inline'`.
+
+3. **Log cost, latency and token counts per query** into the `evals` table
    (currently only `rating`). The dashboard would then show p95 latency and
    $/query instead of a thumbs-up percentage.
 
-7. **Reranking** — the other half of the hybrid-search item. The remaining
+4. **Reranking** — the other half of the hybrid-search item. The remaining
    paraphrase misses are cases where *neither* retriever finds the passage, so
    fusion tuning cannot reach them. A cross-encoder over a wider candidate pool
    is the lever.
 
-8. **Golden set size.** 25 questions per style means one question is 4 points.
+5. **Golden set size.** 25 questions per style means one question is 4 points.
    Absolute numbers are soft; the harness is reliable for paired before/after
    comparison, not for pinning a number.

@@ -66,6 +66,9 @@ scored against hand-labelled cases (6/6) before any of that is quoted.
 Full method, the tuning caveats, and why hit-rate is not answer quality:
 [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
 
+**Multiple documents.** Upload as many PDFs as you like; answers cite across all
+of them. Remove one from the sidebar.
+
 **How it works:**
 ```
 PDF → chunks → embeddings → vector DB

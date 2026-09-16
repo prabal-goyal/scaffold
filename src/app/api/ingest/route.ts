@@ -171,18 +171,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not save the document" }, { status: 500 });
   }
 
-  // Clear all other documents (and their chunks) for this user — keep only the new one.
-  const { data: otherDocs } = await supabase
-    .from("documents")
-    .select("id")
-    .eq("user_id", user.id)
-    .neq("id", doc.id);
-
-  if (otherDocs && otherDocs.length > 0) {
-    const otherIds = otherDocs.map((d) => d.id);
-    await supabase.from("chunks").delete().in("document_id", otherIds);
-    await supabase.from("documents").delete().in("id", otherIds);
-  }
+  // Previously this deleted every other document the user owned, so uploading a
+  // second file silently destroyed the first. Documents now accumulate, and
+  // retrieval already spans all of a user's chunks (match_chunks filters by
+  // user, not document), so answers can cite across documents. Deletion is
+  // explicit, via DELETE /api/documents.
 
   return NextResponse.json({
     success: true,

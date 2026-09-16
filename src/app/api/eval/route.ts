@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { evalRequestSchema, parseJsonBody } from "@/lib/validation";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getEvalStats } from "@/lib/stats";
 
 // Writes here are cheap individually but unbounded in aggregate, so the limit
 // is generous — it exists to stop a loop filling the table, not to pace a user
@@ -67,29 +68,12 @@ export async function GET() {
 
   const supabase = createServiceClient();
 
-  const { data, error } = await supabase
-    .from("evals")
-    .select("rating, created_at, question, answer")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
+  try {
+    // Shared with the dashboard Server Component, which now queries directly
+    // rather than fetching this endpoint from the browser.
+    return NextResponse.json(await getEvalStats(supabase, user.id));
+  } catch (error) {
     console.error("eval fetch failed", error);
     return NextResponse.json({ error: "Could not load your stats" }, { status: 500 });
   }
-
-  const total = data.length;
-  const positive = data.filter((e) => e.rating === 1).length;
-  const negative = data.filter((e) => e.rating === -1).length;
-
-  // Accuracy = what % of rated answers were good
-  const accuracy = total > 0 ? Math.round((positive / total) * 100) : 0;
-
-  return NextResponse.json({
-    total,
-    positive,
-    negative,
-    accuracy,
-    recent: data.slice(0, 20), // last 20 ratings for the table
-  });
 }
