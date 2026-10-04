@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase.service";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import {
@@ -9,7 +10,8 @@ import {
 } from "@/lib/openai";
 import { chunkText } from "@/lib/chunker";
 import { checkRateLimit } from "@/lib/rate-limit";
-import pdfParse from "pdf-parse";
+import { extractPdfText } from "@/lib/pdf";
+import { MAX_UPLOAD_BYTES, isPdfFilename, sanitizeFilename } from "@/lib/validation";
 
 // Vercel serverless functions timeout at 10s by default.
 // Large PDFs take longer — we raise the limit to 60s.
@@ -24,7 +26,20 @@ const RATE_WINDOW_MS = 10 * 60_000;
 // compressed, so 4 MB of file can decompress to far more text than the 60s
 // budget can embed. This caps the work explicitly and fails with an
 // explanation, rather than running until the function is killed.
-const MAX_CHUNKS = 600;
+//
+// 300 chunks of 384 tokens is roughly 170 pages of prose. Each stored chunk
+// costs about 10 KB (a 1536-float embedding plus text and index), so together
+// with MAX_DOCUMENTS this bounds one account to ~15 MB of database.
+const MAX_CHUNKS = 300;
+
+// Without a cap, one account could fill the database — and a full Supabase
+// database refuses writes for every user, not just the one who filled it.
+// Enforced inside save_document (migration 0006) so parallel uploads cannot
+// race past it.
+const MAX_DOCUMENTS = 5;
+
+// SQLSTATE raised by save_document when the cap is reached.
+const DOCUMENT_LIMIT_ERROR = "DL001";
 
 export async function POST(req: NextRequest) {
   const authClient = await createSupabaseServerClient();
@@ -51,33 +66,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not read the upload" }, { status: 400 });
   }
 
-  const file = formData.get("file") as File | null;
+  // A plain text field named "file" would otherwise reach file.name as undefined.
+  const file = formData.get("file");
 
-  if (!file) {
+  if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!file.name.endsWith(".pdf")) {
+  if (!isPdfFilename(file.name)) {
     return NextResponse.json({ error: "Only PDFs are supported" }, { status: 400 });
   }
 
-  if (file.size > 4 * 1024 * 1024) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json({ error: "File too large (max 4 MB)" }, { status: 413 });
   }
 
+  const documentName = sanitizeFilename(file.name);
+  if (!documentName) {
+    return NextResponse.json({ error: "The file needs a name" }, { status: 400 });
+  }
+
   // ── Step 1: Extract text from the PDF ──────────────────────────────────────
-  // File is a Web API object. pdf-parse needs a Node.js Buffer.
-  // arrayBuffer() gives us the raw binary, Buffer.from() converts it.
-  // pdfParse throws on encrypted, password-protected and malformed files, all
-  // of which pass the .endsWith(".pdf") check above. Uncaught, that surfaced as
-  // an unhandled 500 with no explanation.
+  // The extractor throws on encrypted, password-protected and malformed files,
+  // all of which pass the extension check above. Uncaught, that surfaced as an
+  // unhandled 500 with no explanation.
   let text: string;
   let numpages: number;
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = await pdfParse(buffer);
+    const parsed = await extractPdfText(new Uint8Array(await file.arrayBuffer()));
     text = parsed.text;
-    numpages = parsed.numpages;
+    numpages = parsed.pages;
   } catch (error) {
     console.error("pdf parse failed", error);
     return NextResponse.json(
@@ -86,7 +104,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Scanned PDFs are images — pdf-parse can't extract text from images.
+  // Scanned PDFs are images — text extraction can't read them.
   // We detect this and tell the user instead of silently indexing nothing.
   if (!text.trim()) {
     return NextResponse.json(
@@ -98,7 +116,7 @@ export async function POST(req: NextRequest) {
   // ── Step 2: Chunk the text ─────────────────────────────────────────────────
   // Sizes come from src/lib/chunker.ts, chosen by sweeping against the eval set.
   // Each chunk also carries the source file name for citation display later.
-  const chunks = chunkText(text, file.name);
+  const chunks = chunkText(text, documentName);
 
   if (chunks.length > MAX_CHUNKS) {
     return NextResponse.json(
@@ -109,19 +127,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const supabase = createServiceClient();
+
+  // A cheap early refusal, so a user at the cap is not charged an embedding run
+  // first. save_document re-checks inside its transaction; this one can race.
+  const capCheck = await checkDocumentCap(supabase, user.id, documentName);
+  if (capCheck !== "ok") {
+    return capCheck === "over"
+      ? documentLimitResponse()
+      : NextResponse.json({ error: "Could not save the document" }, { status: 500 });
+  }
+
   // ── Step 3: Embed the chunks, in batches ───────────────────────────────────
   // Sending every chunk in one call exceeded OpenAI's input-array limit on large
   // documents and gave a single timeout the power to lose all the work.
-  const vectors: number[][] = [];
+  //
+  // Batches run concurrently. Sequentially, several batches each allowed a 20s
+  // timeout could outlast the route's 60s budget, and the function was killed
+  // mid-upload. Promise.all keeps result order, so vectors[i] matches chunks[i].
+  let vectors: number[][];
   try {
+    const batches: string[][] = [];
     for (let i = 0; i < chunks.length; i += EMBEDDING_BATCH_SIZE) {
-      const batch = chunks.slice(i, i + EMBEDDING_BATCH_SIZE);
-      const response = await openai.embeddings.create(
-        { model: EMBEDDING_MODEL, input: batch.map((c) => c.text) },
-        { timeout: EMBEDDING_BATCH_TIMEOUT_MS }
-      );
-      vectors.push(...response.data.map((e) => e.embedding));
+      batches.push(chunks.slice(i, i + EMBEDDING_BATCH_SIZE).map((c) => c.text));
     }
+    const responses = await Promise.all(
+      batches.map((input) =>
+        openai.embeddings.create(
+          { model: EMBEDDING_MODEL, input },
+          { timeout: EMBEDDING_BATCH_TIMEOUT_MS }
+        )
+      )
+    );
+    vectors = responses.flatMap((response) => response.data.map((e) => e.embedding));
   } catch (error) {
     console.error("embedding failed", error);
     return NextResponse.json(
@@ -131,43 +169,28 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Step 4: Store in Supabase ──────────────────────────────────────────────
-  const supabase = createServiceClient();
+  // One transaction (migration 0006): upsert the document on (user_id, name),
+  // replace its chunks, enforce the cap. Uniqueness is per-user, so two people
+  // can each own a "report.pdf"; re-uploading your own replaces it in place.
+  //
+  // JSON.stringify(vector) gives the "[0.23,-0.87,...]" text pgvector parses.
+  const { error: saveError } = await supabase.rpc("save_document", {
+    p_user_id: user.id,
+    p_name: documentName,
+    p_page_count: numpages,
+    p_max_documents: MAX_DOCUMENTS,
+    p_chunks: chunks.map((chunk, i) => ({
+      content: chunk.text,
+      chunk_index: chunk.index,
+      embedding: JSON.stringify(vectors[i]),
+    })),
+  });
 
-  // First insert (or update) the document record.
-  // The conflict target is (user_id, name), not name alone: uniqueness is
-  // per-user, so two people can each own a "report.pdf" without colliding.
-  // Re-uploading your own file still updates in place rather than duplicating.
-  const { data: doc, error: docError } = await supabase
-    .from("documents")
-    .upsert(
-      { name: file.name, page_count: numpages, user_id: user.id },
-      { onConflict: "user_id,name" }
-    )
-    .select("id")
-    .single();
-
-  if (docError) {
-    console.error("document upsert failed", docError);
-    return NextResponse.json({ error: "Could not save the document" }, { status: 500 });
-  }
-
-  // Build the rows to insert — one per chunk.
-  // JSON.stringify(vector) converts [0.23, -0.87, ...] into the string format
-  // that pgvector expects: "[0.23,-0.87,...]"
-  const rows = chunks.map((chunk, i) => ({
-    document_id: doc.id,
-    content: chunk.text,
-    chunk_index: chunk.index,
-    embedding: JSON.stringify(vectors[i]),
-  }));
-
-  // Delete old chunks for this document before inserting new ones.
-  await supabase.from("chunks").delete().eq("document_id", doc.id);
-
-  const { error: insertError } = await supabase.from("chunks").insert(rows);
-
-  if (insertError) {
-    console.error("chunk insert failed", insertError);
+  if (saveError) {
+    if (saveError.code === DOCUMENT_LIMIT_ERROR) {
+      return documentLimitResponse();
+    }
+    console.error("save_document failed", saveError);
     return NextResponse.json({ error: "Could not save the document" }, { status: 500 });
   }
 
@@ -179,8 +202,38 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    document: file.name,
+    document: documentName,
     chunks: chunks.length,
     pages: numpages,
   });
+}
+
+function documentLimitResponse() {
+  return NextResponse.json(
+    {
+      error: `You can keep up to ${MAX_DOCUMENTS} documents. Remove one to upload another.`,
+    },
+    { status: 409 }
+  );
+}
+
+/** "over" only when this upload would add a new document beyond the cap. */
+async function checkDocumentCap(
+  supabase: SupabaseClient,
+  userId: string,
+  documentName: string
+): Promise<"ok" | "over" | "error"> {
+  const { data, error } = await supabase
+    .from("documents")
+    .select("name")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("document cap check failed", error);
+    return "error";
+  }
+
+  const names = (data ?? []).map((doc) => doc.name as string);
+  if (names.includes(documentName)) return "ok";
+  return names.length >= MAX_DOCUMENTS ? "over" : "ok";
 }

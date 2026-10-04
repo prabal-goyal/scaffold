@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import pdfParse from "pdf-parse";
 import { chunkText, type Chunk } from "@/lib/chunker";
+import { extractPdfText } from "@/lib/pdf";
 
 export const CORPUS_PATH = path.join(process.cwd(), "tests", "eval", "corpus.pdf");
 export const CORPUS_NAME = "federalist-1-30.pdf";
@@ -19,7 +19,8 @@ export async function loadCorpusChunks(): Promise<Chunk[]> {
 
 /** The corpus as extracted text, for callers that want to chunk it themselves. */
 export async function loadCorpusText(): Promise<string> {
-  const { text } = await pdfParse(readFileSync(CORPUS_PATH));
+  // The same extractor the ingest route uses, so chunk boundaries match the app.
+  const { text } = await extractPdfText(new Uint8Array(readFileSync(CORPUS_PATH)));
   return text;
 }
 

@@ -18,7 +18,7 @@ export default async function DashboardPage() {
     data: { user },
   } = await authClient.auth.getUser();
 
-  // The middleware already gates this route; this is the belt to its braces,
+  // The proxy already gates this route; this is the belt to its braces,
   // and it narrows `user` for the query below.
   if (!user) redirect("/login");
 

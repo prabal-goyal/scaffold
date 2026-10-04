@@ -17,7 +17,7 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
 //   it does not block an inline <script> that some future bug manages to inject
 //
 // There is no XSS vector today (React escapes everything, no
-// dangerouslySetInnerHTML anywhere in src/). Nonce-based CSP via middleware is
+// dangerouslySetInnerHTML anywhere in src/). Nonce-based CSP via the proxy is
 // the upgrade, and is recorded in CLAUDE.md rather than half-done here.
 const csp = [
   "default-src 'self'",
@@ -26,8 +26,9 @@ const csp = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
-  // The concrete risk this file exists for: every upload destructively replaces
-  // the user's documents, so a framed page is a one-click data-loss attack.
+  // The concrete risk this file exists for: the page has destructive buttons
+  // (remove a document, delete the account), so a framed page invites a
+  // clickjacking data-loss attack.
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -35,7 +36,7 @@ const csp = [
 ].join("; ");
 
 const nextConfig = {
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["unpdf"],
 
   async headers() {
     return [

@@ -10,6 +10,31 @@ export const MAX_MESSAGE_CHARS = 4000;
 export const MAX_EVAL_TEXT_CHARS = 8000;
 export const MAX_EVAL_SOURCES = 20;
 
+// Upload limits live here rather than in the route so the browser can check them
+// before sending anything. Vercel rejects request bodies over 4.5 MB with a
+// plain-text response the client cannot parse as JSON; checking first turns
+// that into a readable message.
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+export const MAX_FILENAME_CHARS = 200;
+
+/** Case-insensitive: scanners and Windows tools commonly write "Report.PDF". */
+export function isPdfFilename(name: string): boolean {
+  return name.toLowerCase().endsWith(".pdf");
+}
+
+/**
+ * The filename is attacker-controlled and ends up in the sidebar, in citations
+ * and in the model's prompt. Control characters (newlines included) are removed
+ * so a name cannot break out of its line in the prompt, and length is capped.
+ */
+export function sanitizeFilename(name: string): string {
+  return name
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_FILENAME_CHARS);
+}
+
 // `role` is the security-critical field. The model treats a "system" message as
 // instructions, so accepting one from the client lets a caller overwrite the
 // grounding prompt and use this route as a general-purpose LLM. Only the two

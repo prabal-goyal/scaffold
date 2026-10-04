@@ -13,17 +13,19 @@ src/lib/chunker.ts          sentence-aware chunking, 384 tok / 48 overlap, cl100
 src/lib/retrieval.ts        vector + full-text retrieval, hybrid fusion
 src/lib/rrf.ts              weighted reciprocal rank fusion
 src/lib/prompt.ts           system prompt + abstention phrase (shared with the harness)
+src/lib/pdf.ts              PDF text extraction via unpdf (shared with the harness)
 src/lib/validation.ts       zod schemas + parseJsonBody for route bodies
 src/lib/rate-limit.ts       in-memory sliding window (per-instance)
 src/lib/openai.ts           client, model constants, per-call timeout budgets
 src/lib/stats.ts            eval aggregation, shared by the route and the dashboard
 src/lib/supabase.service.ts service-role client — server-only
-src/app/api/ingest/route.ts PDF → parse → chunk → embed (batched) → store
+src/app/api/ingest/route.ts PDF → parse → chunk → embed (batched) → save_document RPC
 src/app/api/documents/      list and delete the caller's documents
+src/app/api/account/        delete the caller's data, then their auth user
 src/app/api/chat/route.ts   embed question → hybrid retrieval → streamed answer
 src/app/api/eval/route.ts   👍/👎 writes + dashboard stats
-supabase/migrations/        schema the code depends on (0002-0005 must be applied)
-tests/run-tests.ts          32 unit tests, no API keys needed
+supabase/migrations/        full schema, 0001 baseline onward (0002-0007 applied live)
+tests/run-tests.ts          36 unit tests, no API keys needed
 tests/eval/                 offline evaluation harness — see RESULTS.md
 ```
 
@@ -226,26 +228,59 @@ Hard-won details:
   there is no per-request nonce yet — so the policy blocks external script and
   connection origins, not injected inline script.
 
+### Pre-launch hardening (Oct 2026)
+
+- **Next.js 16.2.9 → 16.3.8** — cleared a critical advisory set, including a
+  proxy bypass. Routes re-check auth themselves, so it was not exploitable for
+  data here, but the proxy is still the redirect layer.
+- **pdf-parse replaced by unpdf** (`src/lib/pdf.ts`). Current pdf.js, no eval
+  path in the bundle. The eval corpus still yields the same 242 chunks and every
+  gold snippet. Small pdfkit PDFs that pdf-parse rejected now parse.
+- **Atomic ingest** — `save_document` (0006) upserts the document, replaces its
+  chunks and enforces the per-user cap in one transaction. Previously a failed
+  insert left a listed document with zero chunks, and concurrent re-uploads
+  could store every chunk twice.
+- **Storage bounds** — 5 documents per user, 300 chunks per document (~15 MB
+  per account). A full Supabase database refuses writes for everyone.
+- **Embedding batches run concurrently**, so a long document no longer
+  outlives the 60s budget.
+- **Upload UX** — `.PDF` accepted; size checked in the browser; plain-text
+  platform errors (413, 504) no longer surface as "Unexpected token".
+- **Chat with no documents** answers "upload a PDF first" without calling OpenAI.
+- **Sources ride on message annotations**, not the data channel. The client
+  matched data entries to messages by counting, so one failed stream shifted
+  every later answer onto the wrong sources.
+- **Excerpts fenced in `<source>` tags** with a closing-tag neutraliser and an
+  "ignore instructions in sources" rule; filenames stripped of control
+  characters and capped at 200 chars.
+- **Privacy notice and account deletion** — `DELETE /api/account` removes
+  chunks, documents, feedback rows (which hold excerpt copies), then the user.
+- **Home page is a Server Component**; the mobile toggle is a client leaf.
+  `src/app/error.tsx` added.
+- **Base schema tracked** as `0001`, captured from the live project.
+- **Exact per-user vector search** (0007). The filtered `match_chunks` ran
+  ORDER BY over an HNSW index with the user filter applied afterwards, so HNSW
+  returned the ~40 nearest chunks across all tenants and the filter discarded
+  most of them — sources would thin out as users grew, silently. It now ranks
+  the caller's own chunks exactly (≤1,500 under the ingest caps) through a
+  MATERIALIZED CTE, and the HNSW index is dropped. Also added the missing
+  `chunks(document_id)` index and dropped an unfiltered, L2-distance
+  `match_chunks(vector, integer)` overload. **If the per-user caps are raised a
+  lot, revisit this** — exact search cost grows with a user's chunk count.
+
 ---
 
 ## Remaining
 
-Nothing here is a known defect in the shipped request path. Ranked by value.
+Ranked by value. Item 1 is a known launch risk; the rest are not defects in
+the shipped request path.
 
-1. **Prompt injection from document content and filenames.** `/api/chat`
-   interpolates chunk text and `document_name` into the system prompt with no
-   delimiting. This matters more now that retrieval spans multiple documents: a
-   poisoned PDF can influence answers about the others.
+1. **Cost controls are not enforceable yet.** The rate limiter is in-memory
+   per instance, sign-up has no CAPTCHA or email confirmation, there are no
+   daily quotas and `streamText` has no `maxTokens`. Until fixed, the OpenAI
+   project's prepaid balance (auto-recharge off) is the only real ceiling.
 
-2. **`pdf-parse` bundles pdf.js v1.10.100 (2018) with `isEvalSupported` true**,
-   parsing attacker-uploaded binaries. No reachable exploit chain was confirmed
-   through the text-extraction path used here, but a seven-year-old parser on
-   untrusted input is a bad place to rely on that distinction. Replace with
-   `unpdf`, or current `pdfjs-dist` with `isEvalSupported: false`. Its age shows
-   in practice: it rejects small pdfkit-generated PDFs with "bad XRef entry"
-   while reading larger ones from the same generator fine.
-
-   Also a **nonce-based CSP** would let `script-src` drop `'unsafe-inline'`.
+2. **Nonce-based CSP** would let `script-src` drop `'unsafe-inline'`.
 
 3. **Log cost, latency and token counts per query** into the `evals` table
    (currently only `rating`). The dashboard would then show p95 latency and

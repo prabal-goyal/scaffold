@@ -108,7 +108,7 @@ export default function LoginPage() {
       }
     }
 
-    // refresh() lets the middleware see the session cookie the client just set.
+    // refresh() lets the proxy see the session cookie the client just set.
     router.push("/");
     router.refresh();
   }
