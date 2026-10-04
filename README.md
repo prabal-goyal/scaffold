@@ -25,16 +25,18 @@ npm run dev
 
 **Supabase setup** (the app will not work without these):
 
-1. Run `supabase/migrations/*.sql` in the SQL editor — this enables RLS and
-   revokes direct `match_chunks` access. The routes use the service-role key and
-   are unaffected.
+1. Run `supabase/migrations/*.sql` in the SQL editor, in order — this enables
+   RLS and revokes direct `match_chunks` access. The routes use the service-role
+   key and are unaffected. `0001` creates the base tables on a fresh project.
+   **Uploads fail until `0006_save_document.sql` is applied**: ingest saves
+   each document and its chunks through that function, in one transaction.
 2. **Authentication → Sign In / Providers → Email**: *Enable email provider* on,
    *Confirm email* **off**. Sign-up expects a session back immediately; with
    confirmation on it fails with a misleading error.
 
 **Measured, not asserted:**
 
-Offline eval over a fixed public-domain corpus (Federalist Papers 1-30, 208
+Offline eval over a fixed public-domain corpus (Federalist Papers 1-30, 242
 chunks). Each of 25 questions is asked three ways — echoing the document's
 wording, paraphrased, and as terse keywords — because a retriever that only
 works when users quote the source is not much use. `npm run eval:sweep`.
@@ -48,7 +50,7 @@ hit-rate@5:
 | **hybrid (shipped)** | **96.0%** | **76.0%** | **68.0%** | **80.0%** |
 
 Hybrid is vector search fused with Postgres full-text by weighted reciprocal
-rank fusion. Lexical gets half a vote: alone it scores 96% on quoted questions
+rank fusion. Lexical gets a quarter vote: alone it scores 96% on quoted questions
 and 12% on paraphrased ones, so at equal weight it made results *worse* than
 vector alone. The shipped weighting beats vector-only on all three styles and
 both metrics.
@@ -66,8 +68,9 @@ scored against hand-labelled cases (6/6) before any of that is quoted.
 Full method, the tuning caveats, and why hit-rate is not answer quality:
 [tests/eval/RESULTS.md](tests/eval/RESULTS.md).
 
-**Multiple documents.** Upload as many PDFs as you like; answers cite across all
-of them. Remove one from the sidebar.
+**Multiple documents.** Keep up to 5 PDFs (4 MB and about 170 pages each);
+answers cite across all of them. Remove one from the sidebar, or delete your
+account and everything in it.
 
 **How it works:**
 ```
