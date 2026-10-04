@@ -3,13 +3,30 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, Loader2, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_BYTES, isPdfFilename } from "@/lib/validation";
 import gsap from "gsap";
+import DeleteAccountButton from "./DeleteAccountButton";
 
 interface IndexedDoc {
   id: string;
   name: string;
   chunks: number;
   pages: number;
+}
+
+// Not every failure comes from our route. Vercel answers an oversized body or a
+// timed-out function itself, in plain text, so calling res.json() on it threw
+// "Unexpected token..." and that parser error was shown to the user.
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    if (typeof body.error === "string") return body.error;
+  } catch {
+    // Not JSON — use the status-based message below.
+  }
+  if (res.status === 413) return "File too large (max 4 MB).";
+  if (res.status === 504) return "Processing took too long. Try a smaller PDF.";
+  return fallback;
 }
 
 export default function DocumentUpload() {
@@ -61,16 +78,27 @@ export default function DocumentUpload() {
   }, [docs.length]);
 
   async function uploadFile(file: File) {
-    setUploading(true);
     setError(null);
+
+    // Checked here as well as on the server so the user gets an answer without
+    // waiting for an upload that is bound to be refused.
+    if (!isPdfFilename(file.name)) {
+      setError("Only PDFs are supported.");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("File too large (max 4 MB).");
+      return;
+    }
+
+    setUploading(true);
 
     const form = new FormData();
     form.append("file", file);
 
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: form });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      if (!res.ok) throw new Error(await readError(res, "Upload failed. Please try again."));
 
       // Re-read the list instead of appending locally: re-uploading a file with
       // the same name replaces it rather than adding a second entry, and only
@@ -94,7 +122,7 @@ export default function DocumentUpload() {
       const res = await fetch(`/api/documents?id=${encodeURIComponent(doc.id)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Could not delete that document");
+      if (!res.ok) throw new Error(await readError(res, "Could not delete that document"));
       setDocs((prev) => prev.filter((d) => d.id !== doc.id));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not delete that document");
@@ -135,11 +163,21 @@ export default function DocumentUpload() {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,application/pdf"
           className="hidden"
-          onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0])}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Cleared so choosing the same file again after an error still fires.
+            e.target.value = "";
+            if (file) uploadFile(file);
+          }}
         />
       </div>
+
+      <p className="text-[10px] leading-relaxed text-[#6b6a65]">
+        Don&apos;t upload confidential documents. Text from your PDFs is sent to
+        OpenAI to answer questions and stored until you remove it.
+      </p>
 
       {error && (
         <div className="flex items-start gap-2 text-red-600 text-xs bg-red-50 border border-red-200 p-3">
@@ -186,12 +224,15 @@ export default function DocumentUpload() {
         </div>
       )}
 
-      <a
-        href="/dashboard"
-        className="mt-auto text-[10px] text-[#a3a29c] hover:text-[#111110] transition-colors text-center pt-4 tracking-wide uppercase"
-      >
-        Eval dashboard →
-      </a>
+      <div className="mt-auto flex flex-col items-center gap-3 pt-4">
+        <a
+          href="/dashboard"
+          className="text-[10px] text-[#a3a29c] hover:text-[#111110] transition-colors tracking-wide uppercase"
+        >
+          Eval dashboard →
+        </a>
+        <DeleteAccountButton />
+      </div>
 
     </div>
   );

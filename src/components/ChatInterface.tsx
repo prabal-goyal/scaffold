@@ -1,13 +1,11 @@
 "use client";
 
-import { useChat } from "ai/react";
+import { useChat, type Message } from "ai/react";
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, X, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SourceCard, { type Source } from "./SourceCard";
 import gsap from "gsap";
-
-type MessageSources = Record<string, Source[]>;
 
 // The AI SDK surfaces a failed response as an Error carrying the raw body, so
 // the route's own JSON message is in there — worth unwrapping, since "Too many
@@ -22,41 +20,38 @@ function readErrorMessage(error: Error): string {
   return "Something went wrong. Please try again.";
 }
 
+// The chat route attaches retrieved chunks to each assistant message as an
+// annotation. Annotations are typed as arbitrary JSON, so the shape is checked
+// before the array is trusted as Source[].
+function sourcesOf(message: Message): Source[] {
+  for (const annotation of message.annotations ?? []) {
+    if (annotation && typeof annotation === "object" && !Array.isArray(annotation)) {
+      const sources = (annotation as { sources?: unknown }).sources;
+      if (Array.isArray(sources)) return sources as Source[];
+    }
+  }
+  return [];
+}
+
 export default function ChatInterface() {
-  const [messageSources, setMessageSources] = useState<MessageSources>({});
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const dataRef = useRef<unknown[]>([]);
-  const consumedDataRef = useRef(0);
   const prevMsgCount = useRef(0);
   const messagesBodyRef = useRef<HTMLDivElement>(null);
   const sourcePanelRef = useRef<HTMLDivElement>(null);
 
   const [chatError, setChatError] = useState<string | null>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: "/api/chat",
     // Without this the route's 429 and 400 responses fail silently — the
     // request disappears and the user is left looking at an unchanged screen.
     onError: (error) => {
       setChatError(readErrorMessage(error));
     },
-    onFinish: (message) => {
-      const allData = dataRef.current as Array<{ sources?: Source[] }>;
-      const entry = allData[consumedDataRef.current];
-      consumedDataRef.current += 1;
-      const sources = entry?.sources ?? [];
-      if (sources.length) {
-        setMessageSources((prev) => ({ ...prev, [message.id]: sources }));
-      }
-    },
   });
-
-  useEffect(() => {
-    dataRef.current = data ?? [];
-  }, [data]);
 
   // Animate new message sliding up
   useEffect(() => {
@@ -74,7 +69,7 @@ export default function ChatInterface() {
   }, [messages.length]);
 
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const visibleSources = lastAssistant ? (messageSources[lastAssistant.id] ?? []) : [];
+  const visibleSources = lastAssistant ? sourcesOf(lastAssistant) : [];
 
   // Stagger desktop source cards in from right
   useEffect(() => {
@@ -98,7 +93,7 @@ export default function ChatInterface() {
     handleSubmit(e);
   }
 
-  async function submitRating(message: { id: string; content: string }, rating: 1 | -1) {
+  async function submitRating(message: Message, rating: 1 | -1) {
     if (ratings[message.id]) return;
     setRatings((prev) => ({ ...prev, [message.id]: rating }));
     const idx = messages.findIndex((m) => m.id === message.id);
@@ -110,7 +105,7 @@ export default function ChatInterface() {
         body: JSON.stringify({
           question,
           answer: message.content,
-          sources: messageSources[message.id] ?? [],
+          sources: sourcesOf(message),
           rating,
         }),
       });

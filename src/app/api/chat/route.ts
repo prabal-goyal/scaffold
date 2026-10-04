@@ -94,17 +94,38 @@ export async function POST(req: Request) {
     return json({ error: "Could not search your documents" }, 500);
   }
 
+  // Vector search returns its nearest neighbours whenever any chunk exists, so
+  // an empty result almost always means the user has nothing indexed. Answering
+  // that costs a completion and can only produce an abstention, so tell them
+  // what to do instead. The count confirms it, and only runs on this rare path.
+  if (chunks.length === 0) {
+    const { count, error: countError } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (countError) {
+      console.error("document count failed", countError);
+    } else if (count === 0) {
+      return json({ error: "Upload a PDF first, then ask a question about it." }, 400);
+    }
+  }
+
   // ── Step 3: Build the prompt ───────────────────────────────────────────────
   const systemPrompt = buildSystemPrompt(chunks);
 
   // ── Step 4: Stream the response ────────────────────────────────────────────
   return createDataStreamResponse({
     execute: async (dataStream) => {
-      // Send retrieved chunks to the client before text tokens arrive.
-      // The assertion is needed because the SDK's data channel is typed as
-      // JSONValue, which requires an index signature; RetrievedChunk is
-      // JSON-shaped but declares named fields instead.
-      dataStream.writeData({ sources: chunks as unknown as JSONValue });
+      // Sources travel as an annotation on the assistant message itself, not on
+      // the stream-wide data channel. The client used to match data entries to
+      // messages by counting, so a reply that failed mid-stream shifted every
+      // later answer onto the previous answer's sources.
+      //
+      // The assertion is needed because annotations are typed as JSONValue,
+      // which requires an index signature; RetrievedChunk is JSON-shaped but
+      // declares named fields instead.
+      dataStream.writeMessageAnnotation({ sources: chunks as unknown as JSONValue });
 
       const result = streamText({
         model: aiOpenai(CHAT_MODEL),
